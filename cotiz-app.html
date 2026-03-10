@@ -1,0 +1,2197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CotizaClima · Sistema de Cotización</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Lato:wght@300;400;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script> 
+
+<style>
+  :root {
+    --bg: #f4f2ee;
+    --surface: #ffffff;
+    --card: #ffffff;
+    --card2: #f0ede8;
+    --border: #d8d2c8;
+    --accent: #1a3a5c;
+    --accent2: #8b2e0f;
+    --accent3: #2d5a3d;
+    --text: #1a1612;
+    --text-dim: #4a4238;
+    --text-muted: #9a9088;
+    --green: #2d5a3d;
+    --red: #8b2e0f;
+    --yellow: #7a5c1e;
+    --gold: #c9a84c;
+    --radius: 4px;
+    --radius-sm: 3px;
+    --shadow: 0 1px 4px rgba(26,22,18,0.08), 0 4px 16px rgba(26,22,18,0.06);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Lato', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+  }
+
+  /* HEADER */
+  .app-header {
+    background: var(--accent);
+    border-bottom: 3px solid var(--gold);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(26,22,18,0.18);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: rgba(201,168,76,0.15);
+    border: 1.5px solid var(--gold);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+  .logo-text {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #ffffff;
+  }
+  .logo-text span { color: var(--gold); }
+
+  /* STEP PROGRESS */
+  .step-bar {
+    background: var(--surface);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .steps-track {
+    display: flex;
+    gap: 0;
+    align-items: center;
+  }
+  .step-item {
+    display: flex;
+    align-items: center;
+    flex: 1;
+  }
+  .step-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    transition: all 0.3s;
+    font-family: 'DM Mono', monospace;
+    background: var(--surface);
+  }
+  .step-dot.active {
+    border-color: var(--accent);
+    color: var(--surface);
+    background: var(--accent);
+    box-shadow: 0 2px 8px rgba(26,58,92,0.25);
+  }
+  .step-dot.done {
+    border-color: var(--green);
+    background: var(--green);
+    color: white;
+  }
+  .step-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    transition: background 0.3s;
+  }
+  .step-line.done { background: var(--green); }
+  .step-label {
+    font-size: 8px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 4px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-family: 'Lato', sans-serif;
+  }
+  .step-label.active { color: var(--accent); }
+  .step-label.done { color: var(--green); }
+  .step-col { display: flex; flex-direction: column; align-items: center; }
+
+  /* MAIN */
+  .main { padding: 20px 16px; max-width: 480px; margin: 0 auto; }
+
+  /* SECTION TITLE */
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 26px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    letter-spacing: 0.02em;
+    color: var(--accent);
+  }
+  .section-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 22px;
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  /* FILTER BAR */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    flex-shrink: 0;
+    padding: 5px 14px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Lato', sans-serif;
+    transition: all 0.2s;
+    white-space: nowrap;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .filter-chip.active {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: white;
+  }
+
+  /* SEARCH */
+  .search-box {
+    position: relative;
+    margin-bottom: 14px;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 11px 14px 11px 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'Lato', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+    box-shadow: var(--shadow);
+  }
+  .search-box input:focus { border-color: var(--accent); }
+  .search-box input::placeholder { color: var(--text-muted); font-style: italic; }
+  .search-icon {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 15px;
+  }
+
+  /* FILTERS ROW */
+  .filters-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .filter-select {
+    padding: 9px 11px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 12px;
+    font-family: 'Lato', sans-serif;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    box-shadow: var(--shadow);
+  }
+  .filter-select:focus { border-color: var(--accent); }
+  .filter-select option { background: var(--surface); }
+
+  /* AC CARDS */
+  .ac-grid { display: flex; flex-direction: column; gap: 10px; }
+
+  .ac-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .ac-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--border);
+    transition: background 0.2s;
+  }
+  .ac-card:hover {
+    border-color: rgba(26,58,92,0.35);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(26,22,18,0.12);
+  }
+  .ac-card:hover::before { background: var(--accent); }
+  .ac-card.selected {
+    border-color: var(--accent);
+    background: rgba(26,58,92,0.04);
+  }
+  .ac-card.selected::before { background: var(--accent); }
+
+  .ac-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .ac-brand {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+  }
+  .ac-type {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 2px;
+    font-family: 'Lato', sans-serif;
+  }
+  .ac-badge {
+    padding: 3px 10px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+  }
+  .badge-r32 { background: rgba(45,90,61,0.1); color: var(--green); border: 1px solid rgba(45,90,61,0.25); }
+  .badge-r410 { background: rgba(139,46,15,0.1); color: var(--red); border: 1px solid rgba(139,46,15,0.25); }
+
+  .ac-specs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .spec-tag {
+    padding: 2px 8px;
+    background: var(--card2);
+    border-radius: 2px;
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.5px;
+    border: 1px solid var(--border);
+  }
+  .spec-tag.wifi { color: var(--accent); border-color: rgba(26,58,92,0.2); background: rgba(26,58,92,0.06); }
+  .spec-tag.warranty { color: var(--yellow); border-color: rgba(122,92,30,0.2); background: rgba(122,92,30,0.06); }
+
+  /* BTU SELECTOR */
+  .btu-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    font-family: 'Lato', sans-serif;
+  }
+  .btu-options {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+  .btu-btn {
+    padding: 5px 11px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .btu-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(26,58,92,0.05);
+  }
+  .btu-btn.selected {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: white;
+    font-weight: 700;
+  }
+
+  .ac-price {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .price-net {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+  }
+  .price-iva {
+    font-size: 17px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+  }
+  .price-iva span { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+
+  /* ACCESSORIES */
+  .acc-grid { display: flex; flex-direction: column; gap: 10px; }
+  .acc-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 13px 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.2s;
+    box-shadow: var(--shadow);
+  }
+  .acc-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+  }
+  .acc-info { flex: 1; min-width: 0; }
+  .acc-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; color: var(--text); letter-spacing: 0.01em; }
+  .acc-desc { font-size: 11px; color: var(--text-muted); font-style: italic; }
+  .acc-price-tag {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    text-align: right;
+  }
+  .acc-price-tag small {
+    display: block;
+    font-size: 9px;
+    color: var(--text-muted);
+    font-weight: 400;
+    letter-spacing: 0.5px;
+  }
+  .qty-control {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .qty-btn {
+    width: 30px;
+    height: 30px;
+    background: var(--card2);
+    border: none;
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Lato', sans-serif;
+  }
+  .qty-btn:hover { background: var(--border); }
+  .qty-val {
+    width: 32px;
+    height: 30px;
+    background: white;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    text-align: center;
+    border: none;
+    outline: none;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+
+  /* SERVICE TYPE */
+  .service-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .service-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    box-shadow: var(--shadow);
+  }
+  .service-card.selected {
+    border-color: var(--accent);
+    background: rgba(26,58,92,0.05);
+    box-shadow: 0 2px 10px rgba(26,58,92,0.12);
+  }
+  .service-card:hover { border-color: rgba(26,58,92,0.4); }
+  .service-emoji { font-size: 26px; margin-bottom: 8px; }
+  .service-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.01em; color: var(--text); }
+  .service-price { font-size: 12px; color: var(--accent); font-family: 'DM Mono', monospace; font-weight: 700; }
+
+  /* CLIENT FORM */
+  .form-group { margin-bottom: 15px; }
+  .form-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+    font-family: 'Lato', sans-serif;
+  }
+  .form-input, .form-textarea, .form-select-full {
+    width: 100%;
+    padding: 10px 13px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'Lato', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+    box-shadow: var(--shadow);
+  }
+  .form-input:focus, .form-textarea:focus, .form-select-full:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(26,58,92,0.08);
+  }
+  .form-input::placeholder, .form-textarea::placeholder { color: var(--text-muted); font-style: italic; font-size: 13px; }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-select-full option { background: var(--surface); }
+
+  /* SUMMARY */
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 10px;
+    box-shadow: var(--shadow);
+  }
+  .summary-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Lato', sans-serif;
+  }
+  .summary-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(216,210,200,0.5);
+    gap: 12px;
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-row-label { font-size: 13px; color: var(--text-dim); flex: 1; font-weight: 300; }
+  .summary-row-val {
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    text-align: right;
+    color: var(--text);
+  }
+  .summary-row-val.edit-field {
+    border: none;
+    background: rgba(26,58,92,0.04);
+    border-bottom: 1.5px solid var(--accent);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    padding: 2px 6px;
+    outline: none;
+    border-radius: 3px 3px 0 0;
+    text-align: right;
+    min-width: 100px;
+  }
+
+  .total-row {
+    background: var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 16px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    box-shadow: 0 4px 16px rgba(26,58,92,0.2);
+  }
+  .total-label { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.75); letter-spacing: 2px; text-transform: uppercase; }
+  .total-amount {
+    font-size: 24px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    color: white;
+  }
+  .total-amount small { font-size: 14px; color: rgba(255,255,255,0.7); font-weight: 400; margin-right: 2px; }
+
+  /* DISCOUNT */
+  .discount-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .discount-row input {
+    flex: 1;
+    padding: 9px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'DM Mono', monospace;
+    outline: none;
+    box-shadow: var(--shadow);
+  }
+  .discount-row input:focus { border-color: var(--gold); }
+  .discount-badge {
+    padding: 6px 12px;
+    background: rgba(122,92,30,0.08);
+    border: 1px solid rgba(122,92,30,0.25);
+    border-radius: var(--radius-sm);
+    color: var(--yellow);
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+  }
+
+  /* BUTTONS */
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 13px;
+    border-radius: var(--radius);
+    border: none;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Lato', sans-serif;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 2px 8px rgba(26,58,92,0.25);
+  }
+  .btn-primary:hover { background: #15324f; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(26,58,92,0.3); }
+  .btn-secondary {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    box-shadow: var(--shadow);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-pdf {
+    background: var(--accent2);
+    color: white;
+    box-shadow: 0 2px 8px rgba(139,46,15,0.25);
+  }
+  .btn-pdf:hover { background: #7a2800; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(139,46,15,0.3); }
+  .btn-danger {
+    background: rgba(139,46,15,0.06);
+    border: 1px solid rgba(139,46,15,0.2);
+    color: var(--red);
+  }
+  .btn-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .btn-row-single { margin-top: 16px; }
+
+  /* SELECTED SUMMARY CHIP */
+  .selection-chip {
+    background: rgba(26,58,92,0.05);
+    border: 1px solid rgba(26,58,92,0.18);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .chip-icon { font-size: 22px; flex-shrink: 0; }
+  .chip-info { flex: 1; min-width: 0; }
+  .chip-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; color: var(--accent); }
+  .chip-sub { font-size: 11px; color: var(--text-muted); font-style: italic; }
+  .chip-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    text-align: right;
+  }
+  .chip-edit-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text-muted);
+    padding: 4px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: 'Lato', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    text-transform: uppercase;
+  }
+  .chip-edit-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+  }
+  .empty-state .empty-icon { font-size: 44px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-state p { font-size: 14px; font-style: italic; }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--accent);
+    border-radius: var(--radius);
+    padding: 11px 20px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    z-index: 1000;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 8px 24px rgba(26,22,18,0.2);
+    color: white;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: var(--green); color: white; }
+  .toast.error { background: var(--red); color: white; }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    z-index: 100;
+    box-shadow: 0 -2px 12px rgba(26,22,18,0.08);
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 4px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: color 0.2s;
+    gap: 4px;
+    border: none;
+    background: transparent;
+    font-family: 'Lato', sans-serif;
+  }
+  .nav-item.active { color: var(--accent); }
+  .nav-icon { font-size: 19px; }
+
+  /* PAGE TRANSITIONS - handled above */
+
+  /* RESULTS COUNT */
+  .results-count {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+  .results-count span { color: var(--accent); font-weight: 700; }
+
+  /* LOADING */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-style: italic;
+  }
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* SECTION DIVIDER */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 18px 0;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(26,22,18,0.6);
+    z-index: 200;
+    align-items: flex-end;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-sheet {
+    background: var(--surface);
+    border-radius: 8px 8px 0 0;
+    border-top: 3px solid var(--gold);
+    width: 100%;
+    padding: 20px 20px 40px;
+    animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 -8px 30px rgba(26,22,18,0.15);
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-handle {
+    width: 40px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  .modal-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+  }
+
+  /* PADDING BOTTOM for fixed nav */
+  .page-content { padding-bottom: 80px; }
+
+  /* NOTES SECTION */
+  .notes-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; font-style: italic; }
+
+  /* Discount line */
+  .discount-line {
+    display: flex;
+    justify-content: space-between;
+    color: var(--yellow);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 6px 0;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* CONFIG HEADER */
+  .config-header {
+    background: rgba(26,58,92,0.05);
+    border: 1px solid rgba(26,58,92,0.15);
+    border-radius: var(--radius);
+    padding: 13px 15px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .config-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+  .config-text { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+  .config-text strong { color: var(--text); display: block; font-size: 13px; margin-bottom: 2px; font-family: 'Cormorant Garamond', serif; }
+
+  /* TABS */
+  .tab-bar {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    background: var(--card2);
+    border-radius: var(--radius-sm);
+    padding: 4px;
+    border: 1px solid var(--border);
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 3px;
+    font-family: 'Lato', sans-serif;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .tab-btn.active {
+    background: var(--surface);
+    color: var(--accent);
+    box-shadow: var(--shadow);
+  }
+
+  /* PAGE TRANSITIONS */
+  .page { display: none; animation: fadeIn 0.25s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="app-header">
+  <div class="logo">
+    <div class="logo-icon">❄️</div>
+    <div class="logo-text">Cotiza<span>Clima</span></div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <div id="fbStatusDot" title="Sin conexión Firebase — usando datos demo" style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.25);flex-shrink:0;transition:background 0.4s;"></div>
+    <div style="font-size:11px; font-family:'DM Mono',monospace; color:rgba(255,255,255,0.55); letter-spacing:0.5px;" id="quoteNumHeader"></div>
+  </div>
+</div>
+
+<!-- STEP BAR -->
+<div class="step-bar">
+  <div class="steps-track">
+    <div class="step-col">
+      <div class="step-dot active" id="sd1">1</div>
+      <div class="step-label active" id="sl1">Equipo</div>
+    </div>
+    <div class="step-line" id="sline1"></div>
+    <div class="step-col">
+      <div class="step-dot" id="sd2">2</div>
+      <div class="step-label" id="sl2">Servicio</div>
+    </div>
+    <div class="step-line" id="sline2"></div>
+    <div class="step-col">
+      <div class="step-dot" id="sd3">3</div>
+      <div class="step-label" id="sl3">Extras</div>
+    </div>
+    <div class="step-line" id="sline3"></div>
+    <div class="step-col">
+      <div class="step-dot" id="sd4">4</div>
+      <div class="step-label" id="sl4">Cliente</div>
+    </div>
+    <div class="step-line" id="sline4"></div>
+    <div class="step-col">
+      <div class="step-dot" id="sd5">5</div>
+      <div class="step-label" id="sl5">Resumen</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main page-content">
+
+  <!-- PAGE 1: EQUIPO -->
+  <div class="page active" id="page1">
+    <div class="section-title">Selecciona equipo</div>
+    <div class="section-sub">Filtra por marca, capacidad o refrigerante para encontrar el equipo ideal.</div>
+
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Buscar marca o modelo…" oninput="filterAC()">
+    </div>
+
+    <div class="filters-grid">
+      <select class="filter-select" id="filterBTU" onchange="filterAC()">
+        <option value="">Todos los BTU</option>
+        <option value="9000">9.000 BTU</option>
+        <option value="12000">12.000 BTU</option>
+        <option value="18000">18.000 BTU</option>
+        <option value="22000">22.000 BTU</option>
+        <option value="24000">24.000 BTU</option>
+        <option value="36000">36.000 BTU</option>
+      </select>
+      <select class="filter-select" id="filterRef" onchange="filterAC()">
+        <option value="">Todo refrigerante</option>
+        <option value="R32">R32</option>
+        <option value="R410">R410</option>
+      </select>
+      <select class="filter-select" id="filterWarranty" onchange="filterAC()">
+        <option value="">Toda garantía</option>
+        <option value="1">1 año</option>
+        <option value="3">3 años</option>
+      </select>
+      <select class="filter-select" id="filterWifi" onchange="filterAC()">
+        <option value="">WiFi (todos)</option>
+        <option value="Yes">Con WiFi</option>
+        <option value="Optional">WiFi opcional</option>
+        <option value="Universal">WiFi universal</option>
+      </select>
+    </div>
+
+    <div class="results-count" id="resultsCount"></div>
+    <div class="ac-grid" id="acGrid">
+      <div class="loading"><div class="spinner"></div> Cargando equipos…</div>
+    </div>
+    <div class="btn-row-single">
+      <button class="btn btn-primary" onclick="goToStep(2)" id="btnStep1Next" disabled style="opacity:0.4">
+        Continuar con selección →
+      </button>
+    </div>
+  </div>
+
+  <!-- PAGE 2: SERVICIO -->
+  <div class="page" id="page2">
+    <div class="section-title">Tipo de servicio</div>
+    <div class="section-sub">¿Qué tipo de trabajo se realizará?</div>
+
+    <div id="acSelectionChip"></div>
+
+    <div class="service-grid" id="serviceGrid">
+      <!-- Filled by JS -->
+    </div>
+
+    <div class="divider"></div>
+    <div class="form-group">
+      <label class="form-label">Observaciones del servicio</label>
+      <textarea class="form-textarea" id="serviceNotes" placeholder="Describe condiciones especiales, metros de cañería, acceso al lugar, etc."></textarea>
+      <div class="notes-hint">Estos datos aparecerán en la cotización.</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goToStep(1)">← Atrás</button>
+      <button class="btn btn-primary" onclick="goToStep(3)" id="btnStep2Next" disabled style="opacity:0.4">
+        Agregar extras →
+      </button>
+    </div>
+  </div>
+
+  <!-- PAGE 3: ACCESORIOS -->
+  <div class="page" id="page3">
+    <div class="section-title">Accesorios extras</div>
+    <div class="section-sub">Agrega materiales adicionales a la cotización. Opcional.</div>
+
+    <div class="acc-grid" id="accGrid">
+      <!-- Filled by JS -->
+    </div>
+
+    <div class="divider"></div>
+    <div id="accSummaryChip" style="display:none">
+      <div class="selection-chip" style="border-color: rgba(255,107,53,0.3); background: rgba(255,107,53,0.05);">
+        <div class="chip-icon">🛒</div>
+        <div class="chip-info">
+          <div class="chip-title">Extras seleccionados</div>
+          <div class="chip-sub" id="accSummaryText"></div>
+        </div>
+        <div class="chip-price" id="accSummaryPrice"></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goToStep(2)">← Atrás</button>
+      <button class="btn btn-primary" onclick="goToStep(4)">
+        Datos cliente →
+      </button>
+    </div>
+  </div>
+
+  <!-- PAGE 4: CLIENTE -->
+  <div class="page" id="page4">
+    <div class="section-title">Datos del cliente</div>
+    <div class="section-sub">Completa la información para generar la cotización.</div>
+
+    <div class="form-group">
+      <label class="form-label">Nombre completo *</label>
+      <input type="text" class="form-input" id="clientName" placeholder="Ej: Juan Pérez González">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">RUT</label>
+        <input type="text" class="form-input" id="clientRut" placeholder="12.345.678-9">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Teléfono</label>
+        <input type="tel" class="form-input" id="clientPhone" placeholder="+56 9 1234 5678">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Correo electrónico</label>
+      <input type="email" class="form-input" id="clientEmail" placeholder="correo@ejemplo.cl">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Dirección de instalación *</label>
+      <input type="text" class="form-input" id="clientAddress" placeholder="Calle, número, comuna">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Ciudad</label>
+        <input type="text" class="form-input" id="clientCity" placeholder="Ej: Curicó">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Región</label>
+        <select class="form-select-full" id="clientRegion">
+          <option value="">Seleccionar</option>
+          <option value="Arica y Parinacota">Arica y Parinacota</option>
+          <option value="Tarapacá">Tarapacá</option>
+          <option value="Antofagasta">Antofagasta</option>
+          <option value="Atacama">Atacama</option>
+          <option value="Coquimbo">Coquimbo</option>
+          <option value="Valparaíso">Valparaíso</option>
+          <option value="Metropolitana" selected>Metropolitana</option>
+          <option value="O'Higgins">O'Higgins</option>
+          <option value="Maule">Maule</option>
+          <option value="Ñuble">Ñuble</option>
+          <option value="Biobío">Biobío</option>
+          <option value="Araucanía">Araucanía</option>
+          <option value="Los Ríos">Los Ríos</option>
+          <option value="Los Lagos">Los Lagos</option>
+          <option value="Aysén">Aysén</option>
+          <option value="Magallanes">Magallanes</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tipo de inmueble</label>
+      <select class="form-select-full" id="clientProperty">
+        <option value="Casa">Casa</option>
+        <option value="Departamento">Departamento</option>
+        <option value="Oficina">Oficina</option>
+        <option value="Local comercial">Local comercial</option>
+        <option value="Bodega/Industrial">Bodega/Industrial</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notas adicionales</label>
+      <textarea class="form-textarea" id="clientNotes" placeholder="Indicaciones especiales, piso, acceso, etc."></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goToStep(3)">← Atrás</button>
+      <button class="btn btn-primary" onclick="buildSummary(); goToStep(5)">
+        Ver resumen →
+      </button>
+    </div>
+  </div>
+
+  <!-- PAGE 5: RESUMEN Y PDF -->
+  <div class="page" id="page5">
+    <div class="section-title">Cotización final</div>
+    <div class="section-sub">Revisa y edita los valores antes de generar el PDF.</div>
+
+    <!-- Quote meta -->
+    <div class="summary-card">
+      <div class="summary-title">📋 Información cotización</div>
+      <div class="summary-row">
+        <div class="summary-row-label">N° Cotización</div>
+        <div class="summary-row-val" id="sumQuoteNum"></div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-row-label">Fecha</div>
+        <div class="summary-row-val" id="sumDate"></div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-row-label">Validez</div>
+        <div class="summary-row-val">15 días</div>
+      </div>
+    </div>
+
+    <!-- Client -->
+    <div class="summary-card">
+      <div class="summary-title">👤 Cliente</div>
+      <div class="summary-row">
+        <div class="summary-row-label">Nombre</div>
+        <div class="summary-row-val" id="sumClientName"></div>
+      </div>
+      <div class="summary-row" id="sumRutRow">
+        <div class="summary-row-label">RUT</div>
+        <div class="summary-row-val" id="sumClientRut"></div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-row-label">Teléfono</div>
+        <div class="summary-row-val" id="sumClientPhone"></div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-row-label">Dirección</div>
+        <div class="summary-row-val" id="sumClientAddress" style="max-width:200px;text-align:right;line-height:1.3"></div>
+      </div>
+    </div>
+
+    <!-- Equipment -->
+    <div class="summary-card">
+      <div class="summary-title">❄️ Equipo</div>
+      <div class="summary-row">
+        <div class="summary-row-label">Modelo</div>
+        <div class="summary-row-val" id="sumEquipModel"></div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-row-label">Capacidad</div>
+        <div class="summary-row-val" id="sumEquipBtu"></div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-row-label">Refrigerante</div>
+        <div class="summary-row-val" id="sumEquipRef"></div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-row-label">Precio equipo (c/IVA)</div>
+        <input type="number" class="summary-row-val edit-field" id="sumEquipPrice" oninput="recalcTotal()">
+      </div>
+    </div>
+
+    <!-- Service -->
+    <div class="summary-card">
+      <div class="summary-title">🔧 Servicio</div>
+      <div class="summary-row">
+        <div class="summary-row-label">Tipo</div>
+        <div class="summary-row-val" id="sumServiceName"></div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-row-label">Precio servicio</div>
+        <input type="number" class="summary-row-val edit-field" id="sumServicePrice" oninput="recalcTotal()">
+      </div>
+      <div class="summary-row" id="sumNotesRow" style="display:none">
+        <div class="summary-row-label">Notas</div>
+        <div class="summary-row-val" id="sumNotes" style="max-width:200px;text-align:right;font-size:11px;color:var(--text-dim);line-height:1.3"></div>
+      </div>
+    </div>
+
+    <!-- Extras -->
+    <div class="summary-card" id="sumExtrasCard" style="display:none">
+      <div class="summary-title">🛒 Accesorios extras</div>
+      <div id="sumExtrasList"></div>
+    </div>
+
+    <!-- Discount -->
+    <div class="summary-card">
+      <div class="summary-title">🏷️ Descuento</div>
+      <div class="discount-row">
+        <input type="number" id="discountPct" placeholder="% descuento (ej: 10)" min="0" max="100" oninput="recalcTotal()">
+        <div class="discount-badge" id="discountBadgeAmt">— $0</div>
+      </div>
+    </div>
+
+    <!-- TOTAL -->
+    <div class="total-row">
+      <div class="total-label">TOTAL COTIZACIÓN</div>
+      <div class="total-amount"><small>$</small><span id="grandTotal">0</span></div>
+    </div>
+
+    <div class="btn-row-single" style="margin-top:16px">
+      <button class="btn btn-pdf" onclick="generatePDF()">
+        📄 Generar PDF · Descargar
+      </button>
+    </div>
+    <div class="btn-row" style="margin-top:10px">
+      <button class="btn btn-secondary" onclick="goToStep(4)">← Editar datos</button>
+      <button class="btn btn-danger" onclick="resetAll()">🔄 Nueva cotiz.</button>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- FIREBASE CONFIG MODAL -->
+<div class="modal-overlay" id="configModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙️ Conectar Firebase</div>
+    <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px; line-height:1.6; font-style:italic;">
+      Ingresa la URL de tu Firebase Realtime Database. La encuentras en la consola de Firebase bajo
+      <strong style="font-style:normal; color:var(--accent)">Build → Realtime Database</strong>.
+    </p>
+
+    <!-- Instrucción visual -->
+    <div style="background:rgba(26,58,92,0.06); border:1px solid rgba(26,58,92,0.15); border-radius:4px; padding:12px 14px; margin-bottom:16px;">
+      <div style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;">Tu URL tiene este formato</div>
+      <div style="font-size:12px; font-family:'DM Mono',monospace; color:var(--accent); word-break:break-all;">https://<em style="color:var(--text-muted)">tu-proyecto</em>-default-rtdb.firebaseio.com</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">URL de Realtime Database</label>
+      <input type="text" class="form-input" id="cfgFirebaseUrl"
+        placeholder="https://tu-proyecto-default-rtdb.firebaseio.com">
+      <div class="notes-hint" style="margin-top:6px">Sin barra al final. Solo se requiere lectura pública.</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Nodo raíz (opcional)</label>
+      <input type="text" class="form-input" id="cfgNode"
+        placeholder="air_conditioners" value="air_conditioners">
+      <div class="notes-hint" style="margin-top:6px">Nombre del array en tu JSON de Firebase.</div>
+    </div>
+
+    <button class="btn btn-primary" onclick="saveFirebaseConfig()" style="margin-top:8px">
+      🔗 Guardar y conectar
+    </button>
+    <button class="btn btn-secondary" onclick="closeConfigModal(); loadDemoData()" style="margin-top:8px">
+      Continuar con datos demo
+    </button>
+
+    <!-- Estado de conexión -->
+    <div id="cfgStatus" style="display:none; margin-top:12px; padding:10px 14px; border-radius:4px; font-size:12px; font-weight:700; letter-spacing:0.5px;"></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="nav-item active" id="nav1" onclick="goToStep(1)">
+    <span class="nav-icon">❄️</span>Equipo
+  </button>
+  <button class="nav-item" id="nav2" onclick="goToStep(2)">
+    <span class="nav-icon">🔧</span>Servicio
+  </button>
+  <button class="nav-item" id="nav3" onclick="goToStep(3)">
+    <span class="nav-icon">🛒</span>Extras
+  </button>
+  <button class="nav-item" id="nav4" onclick="goToStep(4)">
+    <span class="nav-icon">👤</span>Cliente
+  </button>
+  <button class="nav-item" id="nav5" onclick="goToStep(5)">
+    <span class="nav-icon">📄</span>PDF
+  </button>
+</div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const DEMO_DATA = [
+  { type:"Split Inverter", refrigerant:"R32", brand_model:"XTRA", wifi:"Universal", warranty:"1 year", installation_kit:"3 metros", capacities:[{btu_capacity:9000,net_price:214126,price_with_tax:254810},{btu_capacity:12000,net_price:239042,price_with_tax:284461},{btu_capacity:18000,net_price:360000,price_with_tax:428400},{btu_capacity:24000,net_price:387605,price_with_tax:461250},{btu_capacity:36000,net_price:677597,price_with_tax:806340}]},
+  { type:"Split Inverter", refrigerant:"R32", brand_model:"HI VIDA", wifi:"Yes", warranty:"3 years", installation_kit:"4 metros", capacities:[{btu_capacity:9000,net_price:214655,price_with_tax:255440},{btu_capacity:12000,net_price:242865,price_with_tax:289010},{btu_capacity:18000,net_price:352605,price_with_tax:419600}]},
+  { type:"Split Inverter", refrigerant:"R32", brand_model:"LG PRO", wifi:"Yes", warranty:"1 year", installation_kit:"3 metros", capacities:[{btu_capacity:9000,net_price:240017,price_with_tax:285620},{btu_capacity:12000,net_price:251362,price_with_tax:299120},{btu_capacity:18000,net_price:406084,price_with_tax:483240},{btu_capacity:24000,net_price:536201,price_with_tax:638080}]},
+  { type:"Split Inverter", refrigerant:"R32", brand_model:"BREEZELEZ", wifi:"Yes", warranty:"1 year", installation_kit:"4 metros", capacities:[{btu_capacity:9000,net_price:311126,price_with_tax:370240},{btu_capacity:12000,net_price:331454,price_with_tax:394430},{btu_capacity:18000,net_price:450235,price_with_tax:535780}]},
+  { type:"Split Inverter", refrigerant:"R32", brand_model:"BREZin X32", wifi:"Yes", warranty:"3 years", installation_kit:"4 metros", capacities:[{btu_capacity:9000,net_price:193807,price_with_tax:230630},{btu_capacity:12000,net_price:205202,price_with_tax:244190},{btu_capacity:18000,net_price:319202,price_with_tax:379850}]},
+  { type:"Split Inverter", refrigerant:"R32", brand_model:"CONSOLA", wifi:"Yes", warranty:"3 years", installation_kit:"4 metros", capacities:[{btu_capacity:9000,net_price:206353,price_with_tax:245560},{btu_capacity:12000,net_price:226655,price_with_tax:269720},{btu_capacity:18000,net_price:356824,price_with_tax:424620},{btu_capacity:22000,net_price:378639,price_with_tax:450580},{btu_capacity:24000,net_price:399000,price_with_tax:474810},{btu_capacity:36000,net_price:449160,price_with_tax:534500}]},
+  { type:"Split Inverter", refrigerant:"R410", brand_model:"DURA", wifi:"Yes", warranty:"3 years", installation_kit:"4 metros", capacities:[{btu_capacity:9000,net_price:228043,price_with_tax:271371},{btu_capacity:12000,net_price:261361,price_with_tax:311020},{btu_capacity:18000,net_price:376613,price_with_tax:448170},{btu_capacity:24000,net_price:457908,price_with_tax:544910}]},
+  { type:"Split Inverter", refrigerant:"R410", brand_model:"BRISSA", wifi:"Optional", warranty:"3 years", installation_kit:"4 metros", capacities:[{btu_capacity:9000,net_price:239882,price_with_tax:285460},{btu_capacity:12000,net_price:243059,price_with_tax:289241},{btu_capacity:18000,net_price:406983,price_with_tax:484310},{btu_capacity:24000,net_price:543538,price_with_tax:646810}]},
+  { type:"Split Inverter", refrigerant:"R410", brand_model:"DUAL COOL", wifi:"Yes", warranty:"1 year", installation_kit:"3 metros", capacities:[{btu_capacity:12000,net_price:295134,price_with_tax:351210},{btu_capacity:18000,net_price:404882,price_with_tax:481810},{btu_capacity:24000,net_price:506924,price_with_tax:603240}]},
+  { type:"Split Inverter", refrigerant:"R410", brand_model:"SERIE AL", wifi:"Yes", warranty:"1 year", installation_kit:"3 metros", capacities:[{btu_capacity:12000,net_price:264210,price_with_tax:314410},{btu_capacity:18000,net_price:412925,price_with_tax:491380}]},
+  { type:"Split Inverter", refrigerant:"R32", brand_model:"ENERGY PRO", wifi:"Yes", warranty:"3 years", installation_kit:"4 metros", capacities:[{btu_capacity:9000,net_price:418042,price_with_tax:497470},{btu_capacity:12000,net_price:242865,price_with_tax:289010},{btu_capacity:18000,net_price:546311,price_with_tax:650110},{btu_capacity:24000,net_price:672009,price_with_tax:799691}]},
+  { type:"Split Inverter", refrigerant:"R410", brand_model:"ARTCOOL MIRROR", wifi:"Yes", warranty:"1 year", installation_kit:"3 metros", capacities:[{btu_capacity:12000,net_price:453378,price_with_tax:539520},{btu_capacity:18000,net_price:522235,price_with_tax:621460}]}
+];
+
+const ACCESSORIES = [
+  { id:'can1', name:'Cañería extra 1m', desc:'Tubo de cobre + aislación térmica', price:8500, icon:'🔩', color:'rgba(0,229,255,0.1)' },
+  { id:'can3', name:'Cañería extra 3m', desc:'Kit completo 3 metros', price:22000, icon:'🔩', color:'rgba(0,229,255,0.1)' },
+  { id:'cable5', name:'Cable eléctrico 5m', desc:'Cable 3x2.5mm TTU', price:6500, icon:'⚡', color:'rgba(255,214,0,0.1)' },
+  { id:'cable10', name:'Cable eléctrico 10m', desc:'Cable 3x2.5mm TTU', price:12000, icon:'⚡', color:'rgba(255,214,0,0.1)' },
+  { id:'soporte', name:'Soporte mural reforzado', desc:'Soportes de fijación para unidad exterior', price:18000, icon:'🏗️', color:'rgba(124,77,255,0.1)' },
+  { id:'drenaje', name:'Kit de drenaje', desc:'Manguera drenaje + accesorios', price:9500, icon:'💧', color:'rgba(0,150,255,0.1)' },
+  { id:'breaker', name:'Breaker termomagnético', desc:'10A - protección eléctrica', price:14000, icon:'🔌', color:'rgba(255,107,53,0.1)' },
+  { id:'limpieza', name:'Limpieza profesional', desc:'Lavado unidad evaporadora', price:25000, icon:'🧹', color:'rgba(0,230,118,0.1)' },
+  { id:'canaleta', name:'Canaleta PVC 2m', desc:'Protección y acabado estético', price:7500, icon:'📦', color:'rgba(124,77,255,0.1)' },
+  { id:'gas', name:'Carga de gas refrigerante', desc:'Recarga R32 o R410 (150g)', price:35000, icon:'🧊', color:'rgba(0,229,255,0.1)' },
+];
+
+const SERVICES = [
+  { id:'instalacion', name:'Instalación nueva', desc:'Primera instalación del equipo', price:85000, emoji:'🏗️' },
+  { id:'mantencion', name:'Mantención', desc:'Limpieza y revisión general', price:45000, emoji:'🔧' },
+  { id:'cambio', name:'Cambio + instalación', desc:'Retiro equipo antiguo + nuevo', price:120000, emoji:'🔄' },
+  { id:'reparacion', name:'Reparación', desc:'Diagnóstico y reparación de fallas', price:55000, emoji:'⚙️' },
+  { id:'garantia', name:'Visita garantía', desc:'Revisión por garantía vigente', price:0, emoji:'✅' },
+  { id:'presupuesto', name:'Solo presupuesto', desc:'Cotización sin instalación', price:0, emoji:'📋' },
+];
+
+// ============================================================
+// FIREBASE REALTIME DATABASE CONFIG
+// ▶ Solo cambia estos dos valores con los de tu proyecto:
+// ============================================================
+const FIREBASE_URL = 'TU_URL_AQUI';
+// Ejemplo: 'https://mi-proyecto-default-rtdb.firebaseio.com'
+
+const FIREBASE_NODE = 'air_conditioners';
+// Debe coincidir con el nombre del array en tu JSON de Firebase
+
+// ============================================================
+// STATE
+// ============================================================
+let allAC = [];
+let filteredAC = [];
+let selectedAC = null;
+let selectedBTU = null;
+let selectedService = null;
+let accQty = {};
+let currentStep = 1;
+let quoteNumber = '';
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  try { generateQuoteNumber(); } catch(e) {}
+  try { renderAccGrid(); } catch(e) {}
+  try { renderServiceGrid(); } catch(e) {}
+
+  // Mostrar datos demo de inmediato (sin pantalla en blanco)
+  loadDemoData();
+
+  // Si hay URL de Firebase configurada, cargar datos reales encima
+  const savedUrl = getSavedFirebaseUrl();
+  const activeUrl = (FIREBASE_URL !== 'TU_URL_AQUI') ? FIREBASE_URL : savedUrl;
+
+  if (activeUrl) {
+    loadFromFirebase(activeUrl, FIREBASE_NODE);
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+// ============================================================
+// FIREBASE REALTIME DATABASE - CARGA DE DATOS
+// ============================================================
+
+/**
+ * Carga equipos desde Firebase Realtime Database.
+ * La URL pública termina en /<nodo>.json sin necesidad de API key
+ * cuando las reglas permiten lectura pública.
+ */
+async function loadFromFirebase(url, node) {
+  const cleanUrl = url.replace(/\/$/, ''); // quitar slash final si existe
+  const endpoint = `${cleanUrl}/${node}.json`;
+
+  try {
+    showFirebaseStatus('connecting');
+    const res = await fetch(endpoint);
+
+    if (!res.ok) throw new Error(`HTTP ${res.status} — verifica la URL y las reglas de lectura`);
+
+    const raw = await res.json();
+
+    if (!raw) throw new Error('El nodo está vacío en Firebase');
+
+    // Firebase guarda arrays como objetos numéricos {0:{...}, 1:{...}}
+    // cuando se importa un JSON. Esta función los normaliza de vuelta a arrays.
+    const data = normalizeFirebaseArrays(raw);
+
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error('No se encontraron equipos en el nodo indicado');
+    }
+
+    allAC = data;
+    filteredAC = [...allAC];
+    renderACGrid();
+    showFirebaseStatus('ok', `${data.length} equipos cargados desde Firebase`);
+    showToast(`✅ ${data.length} equipos actualizados`, 'success');
+
+  } catch(e) {
+    showFirebaseStatus('error', e.message);
+    showToast('Firebase: usando datos demo', 'error');
+    // Los datos demo ya están cargados, no hacemos nada más
+  }
+}
+
+/**
+ * Convierte objetos con claves numéricas (formato Firebase) en arrays.
+ * Aplica de forma recursiva para manejar arrays anidados (capacities).
+ */
+function normalizeFirebaseArrays(obj) {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) return obj.map(normalizeFirebaseArrays);
+
+  if (typeof obj === 'object') {
+    const keys = Object.keys(obj);
+    const allNumeric = keys.length > 0 && keys.every(k => /^\d+$/.test(k));
+
+    if (allNumeric) {
+      // Es un array disfrazado de objeto
+      return keys
+        .sort((a, b) => Number(a) - Number(b))
+        .map(k => normalizeFirebaseArrays(obj[k]));
+    }
+
+    // Es un objeto normal → normalizar sus valores recursivamente
+    const result = {};
+    keys.forEach(k => result[k] = normalizeFirebaseArrays(obj[k]));
+    return result;
+  }
+
+  return obj;
+}
+
+// ============================================================
+// PERSISTENCIA DE CONFIG EN LOCALSTORAGE
+// ============================================================
+function getSavedFirebaseUrl() {
+  try { return localStorage.getItem('fb_rtdb_url') || ''; }
+  catch(e) { return ''; }
+}
+
+function saveFirebaseConfig() {
+  const urlInput = document.getElementById('cfgFirebaseUrl').value.trim();
+  const nodeInput = document.getElementById('cfgNode').value.trim() || 'air_conditioners';
+
+  if (!urlInput || !urlInput.startsWith('https://')) {
+    showCfgStatus('error', '⚠️ La URL debe comenzar con https://');
+    return;
+  }
+
+  try { localStorage.setItem('fb_rtdb_url', urlInput); } catch(e) {}
+  try { localStorage.setItem('fb_rtdb_node', nodeInput); } catch(e) {}
+
+  showCfgStatus('loading', '🔄 Conectando con Firebase…');
+  loadFromFirebaseModal(urlInput, nodeInput);
+}
+
+async function loadFromFirebaseModal(url, node) {
+  const cleanUrl = url.replace(/\/$/, '');
+  const endpoint = `${cleanUrl}/${node}.json`;
+
+  try {
+    const res = await fetch(endpoint);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const raw = await res.json();
+    if (!raw) throw new Error('Nodo vacío');
+
+    const data = normalizeFirebaseArrays(raw);
+    if (!Array.isArray(data) || data.length === 0) throw new Error('Sin equipos en ese nodo');
+
+    allAC = data;
+    filteredAC = [...allAC];
+    renderACGrid();
+    showCfgStatus('ok', `✅ Conectado — ${data.length} equipos cargados`);
+    showToast(`✅ Firebase conectado · ${data.length} equipos`, 'success');
+
+    setTimeout(() => closeConfigModal(), 1800);
+
+  } catch(e) {
+    showCfgStatus('error', `❌ Error: ${e.message}`);
+  }
+}
+
+function showCfgStatus(type, msg) {
+  const el = document.getElementById('cfgStatus');
+  if (!el) return;
+  el.style.display = 'block';
+  el.textContent = msg;
+  const styles = {
+    ok:      'background:rgba(45,90,61,0.1); border:1px solid rgba(45,90,61,0.3); color:#2d5a3d;',
+    error:   'background:rgba(139,46,15,0.1); border:1px solid rgba(139,46,15,0.3); color:#8b2e0f;',
+    loading: 'background:rgba(26,58,92,0.08); border:1px solid rgba(26,58,92,0.2); color:#1a3a5c;',
+  };
+  el.style.cssText += styles[type] || styles.loading;
+}
+
+function showFirebaseStatus(type, msg) {
+  const dot = document.getElementById('fbStatusDot');
+  if (!dot) return;
+  if (type === 'connecting') {
+    dot.style.background = 'rgba(201,168,76,0.8)';
+    dot.title = 'Conectando con Firebase…';
+  } else if (type === 'ok') {
+    dot.style.background = '#6fcf97';
+    dot.title = msg || 'Firebase conectado';
+  } else {
+    dot.style.background = 'rgba(255,100,80,0.7)';
+    dot.title = msg || 'Error Firebase — usando datos demo';
+  }
+}
+
+function getFirebaseConfig() {
+  // Mantenido por compatibilidad — ya no se usa en el nuevo flujo
+  return null;
+}
+
+function generateQuoteNumber() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  quoteNumber = `COT-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${Math.floor(Math.random()*9000+1000)}`;
+  document.getElementById('quoteNumHeader').textContent = quoteNumber;
+}
+
+function loadDemoData() {
+  allAC = DEMO_DATA;
+  filteredAC = [...allAC];
+  renderACGrid();
+}
+
+// ============================================================
+// RENDER AC GRID
+// ============================================================
+function renderACGrid() {
+  try {
+  const grid = document.getElementById('acGrid');
+  const count = document.getElementById('resultsCount');
+  if (!grid) return;
+  if (filteredAC.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><p>No se encontraron equipos con esos filtros.</p></div>`;
+    if (count) count.innerHTML = '';
+    return;
+  }
+  if (count) count.innerHTML = `<span>${filteredAC.length}</span> equipo${filteredAC.length!==1?'s':''} encontrado${filteredAC.length!==1?'s':''}`;
+  grid.innerHTML = filteredAC.map((ac, idx) => {
+    const origIdx = allAC.indexOf(ac);
+    const isSelected = selectedAC === origIdx;
+    const refBadge = ac.refrigerant === 'R32' ? 'badge-r32' : 'badge-r410';
+    const wifiLabel = ac.wifi === 'Yes' ? '📶 WiFi' : ac.wifi === 'Optional' ? '📶 WiFi opcional' : '📶 WiFi universal';
+    const warYears = ac.warranty && ac.warranty.includes('3') ? '3 años' : '1 año';
+    return `
+    <div class="ac-card ${isSelected ? 'selected' : ''}" id="accard-${origIdx}">
+      <div class="ac-header">
+        <div>
+          <div class="ac-brand">${ac.brand_model}</div>
+          <div class="ac-type">${ac.type}</div>
+        </div>
+        <span class="ac-badge ${refBadge}">${ac.refrigerant}</span>
+      </div>
+      <div class="ac-specs">
+        <span class="spec-tag wifi">${wifiLabel}</span>
+        <span class="spec-tag warranty">🛡️ ${warYears}</span>
+        <span class="spec-tag">📦 Kit ${ac.installation_kit}</span>
+      </div>
+      <div class="btu-label">Capacidad BTU</div>
+      <div class="btu-options">
+        ${ac.capacities.map(c => `
+          <button class="btu-btn ${isSelected && selectedBTU === c.btu_capacity ? 'selected' : ''}"
+            onclick="selectAC(${origIdx}, ${c.btu_capacity}); event.stopPropagation()">
+            ${(c.btu_capacity/1000).toFixed(0)}K
+          </button>
+        `).join('')}
+      </div>
+      ${isSelected && selectedBTU ? renderACPrice(origIdx) : ''}
+    </div>`;
+  }).join('');
+  } catch(err) {
+    const grid = document.getElementById('acGrid');
+    if (grid) grid.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>Error al cargar: ${err.message}</p></div>`;
+  }
+}
+
+function renderACPrice(idx) {
+  const ac = allAC[idx];
+  const cap = ac.capacities.find(c => c.btu_capacity === selectedBTU);
+  if (!cap) return '';
+  return `
+    <div class="ac-price">
+      <div class="price-net">Neto: $${fmtNum(cap.net_price)}</div>
+      <div class="price-iva">$${fmtNum(cap.price_with_tax)} <span>c/IVA</span></div>
+    </div>`;
+}
+
+function selectAC(idx, btu) {
+  selectedAC = idx;
+  selectedBTU = btu;
+  document.getElementById('btnStep1Next').disabled = false;
+  document.getElementById('btnStep1Next').style.opacity = '1';
+  renderACGrid();
+  showToast(`✅ ${allAC[idx].brand_model} · ${(btu/1000).toFixed(0)}K BTU`, 'success');
+}
+
+function filterAC() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const btu = parseInt(document.getElementById('filterBTU').value) || 0;
+  const ref = document.getElementById('filterRef').value;
+  const warranty = document.getElementById('filterWarranty').value;
+  const wifi = document.getElementById('filterWifi').value;
+
+  filteredAC = allAC.filter(ac => {
+    if (search && !ac.brand_model.toLowerCase().includes(search)) return false;
+    if (ref && ac.refrigerant !== ref) return false;
+    if (wifi && ac.wifi !== wifi) return false;
+    if (warranty === '1' && !ac.warranty.includes('1')) return false;
+    if (warranty === '3' && !ac.warranty.includes('3')) return false;
+    if (btu && !ac.capacities.find(c => c.btu_capacity === btu)) return false;
+    return true;
+  });
+  renderACGrid();
+}
+
+// ============================================================
+// RENDER SERVICE GRID
+// ============================================================
+function renderServiceGrid() {
+  document.getElementById('serviceGrid').innerHTML = SERVICES.map(s => `
+    <div class="service-card ${selectedService === s.id ? 'selected' : ''}" onclick="selectService('${s.id}')">
+      <div class="service-emoji">${s.emoji}</div>
+      <div class="service-name">${s.name}</div>
+      <div class="service-price">${s.price > 0 ? '$'+fmtNum(s.price) : 'Sin costo'}</div>
+    </div>
+  `).join('');
+}
+
+function selectService(id) {
+  selectedService = id;
+  renderServiceGrid();
+  const btn = document.getElementById('btnStep2Next');
+  btn.disabled = false;
+  btn.style.opacity = '1';
+  showToast('✅ Servicio seleccionado', 'success');
+}
+
+// ============================================================
+// RENDER ACCESSORIES
+// ============================================================
+function renderAccGrid() {
+  document.getElementById('accGrid').innerHTML = ACCESSORIES.map(acc => `
+    <div class="acc-card">
+      <div class="acc-icon" style="background:${acc.color}">${acc.icon}</div>
+      <div class="acc-info">
+        <div class="acc-name">${acc.name}</div>
+        <div class="acc-desc">${acc.desc}</div>
+      </div>
+      <div>
+        <div class="acc-price-tag">$${fmtNum(acc.price)}<small>c/u</small></div>
+        <div class="qty-control" style="margin-top:6px">
+          <button class="qty-btn" onclick="changeQty('${acc.id}', -1)">−</button>
+          <input class="qty-val" id="qty-${acc.id}" value="${accQty[acc.id]||0}" readonly>
+          <button class="qty-btn" onclick="changeQty('${acc.id}', 1)">+</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function changeQty(id, delta) {
+  accQty[id] = Math.max(0, (accQty[id] || 0) + delta);
+  document.getElementById('qty-'+id).value = accQty[id];
+  updateAccSummary();
+}
+
+function updateAccSummary() {
+  let total = 0, count = 0;
+  ACCESSORIES.forEach(acc => {
+    const q = accQty[acc.id] || 0;
+    if (q > 0) { total += acc.price * q; count += q; }
+  });
+  const chip = document.getElementById('accSummaryChip');
+  if (count > 0) {
+    chip.style.display = 'block';
+    document.getElementById('accSummaryText').textContent = `${count} ítem${count!==1?'s':''}`;
+    document.getElementById('accSummaryPrice').textContent = '$'+fmtNum(total);
+  } else {
+    chip.style.display = 'none';
+  }
+}
+
+// ============================================================
+// STEP NAVIGATION
+// ============================================================
+function goToStep(n) {
+  for (let i=1; i<=5; i++) {
+    document.getElementById('page'+i).classList.toggle('active', i===n);
+    document.getElementById('nav'+i).classList.toggle('active', i===n);
+    const dot = document.getElementById('sd'+i);
+    const lbl = document.getElementById('sl'+i);
+    dot.className = 'step-dot ' + (i < n ? 'done' : i === n ? 'active' : '');
+    lbl.className = 'step-label ' + (i < n ? 'done' : i === n ? 'active' : '');
+    dot.textContent = i < n ? '✓' : i;
+    if (i < 5) {
+      document.getElementById('sline'+i).className = 'step-line ' + (i < n ? 'done' : '');
+    }
+  }
+  currentStep = n;
+  if (n === 2) renderServiceChip();
+  window.scrollTo(0,0);
+}
+
+function renderServiceChip() {
+  const chip = document.getElementById('acSelectionChip');
+  if (!selectedAC && selectedAC !== 0) { chip.innerHTML = ''; return; }
+  const ac = allAC[selectedAC];
+  const cap = ac.capacities.find(c => c.btu_capacity === selectedBTU);
+  chip.innerHTML = `
+    <div class="selection-chip">
+      <div class="chip-icon">❄️</div>
+      <div class="chip-info">
+        <div class="chip-title">${ac.brand_model} · ${ac.type}</div>
+        <div class="chip-sub">${selectedBTU ? (selectedBTU/1000).toFixed(0)+'K BTU · ' : ''}${ac.refrigerant}</div>
+      </div>
+      <div>
+        <div class="chip-price">${cap ? '$'+fmtNum(cap.price_with_tax) : ''}</div>
+        <button class="chip-edit-btn" onclick="goToStep(1)">Cambiar</button>
+      </div>
+    </div>`;
+}
+
+// ============================================================
+// BUILD SUMMARY
+// ============================================================
+function buildSummary() {
+  const ac = selectedAC !== null ? allAC[selectedAC] : null;
+  const cap = ac ? ac.capacities.find(c => c.btu_capacity === selectedBTU) : null;
+  const svc = SERVICES.find(s => s.id === selectedService);
+
+  // Quote info
+  document.getElementById('sumQuoteNum').textContent = quoteNumber;
+  document.getElementById('sumDate').textContent = new Date().toLocaleDateString('es-CL', {day:'2-digit',month:'long',year:'numeric'});
+
+  // Client
+  const name = document.getElementById('clientName').value || '—';
+  const rut = document.getElementById('clientRut').value;
+  const phone = document.getElementById('clientPhone').value || '—';
+  const address = document.getElementById('clientAddress').value || '—';
+  const city = document.getElementById('clientCity').value || '';
+  const region = document.getElementById('clientRegion').value || '';
+  document.getElementById('sumClientName').textContent = name;
+  document.getElementById('sumClientRut').textContent = rut || '—';
+  document.getElementById('sumRutRow').style.display = rut ? 'flex' : 'none';
+  document.getElementById('sumClientPhone').textContent = phone;
+  document.getElementById('sumClientAddress').textContent = `${address}${city?', '+city:''}${region?', '+region:''}`;
+
+  // Equipment
+  if (ac && cap) {
+    document.getElementById('sumEquipModel').textContent = `${ac.brand_model} · ${ac.type}`;
+    document.getElementById('sumEquipBtu').textContent = `${(selectedBTU/1000).toFixed(0)}.000 BTU`;
+    document.getElementById('sumEquipRef').textContent = ac.refrigerant;
+    document.getElementById('sumEquipPrice').value = cap.price_with_tax;
+  } else {
+    document.getElementById('sumEquipModel').textContent = 'Sin equipo';
+    document.getElementById('sumEquipPrice').value = 0;
+  }
+
+  // Service
+  if (svc) {
+    document.getElementById('sumServiceName').textContent = svc.name;
+    document.getElementById('sumServicePrice').value = svc.price;
+    const notes = document.getElementById('serviceNotes').value;
+    if (notes) {
+      document.getElementById('sumNotesRow').style.display = 'flex';
+      document.getElementById('sumNotes').textContent = notes;
+    } else {
+      document.getElementById('sumNotesRow').style.display = 'none';
+    }
+  } else {
+    document.getElementById('sumServiceName').textContent = '—';
+    document.getElementById('sumServicePrice').value = 0;
+  }
+
+  // Extras
+  const extrasCard = document.getElementById('sumExtrasCard');
+  const extrasList = document.getElementById('sumExtrasList');
+  const activeExtras = ACCESSORIES.filter(acc => (accQty[acc.id]||0) > 0);
+  if (activeExtras.length > 0) {
+    extrasCard.style.display = 'block';
+    extrasList.innerHTML = activeExtras.map(acc => {
+      const q = accQty[acc.id];
+      const subtotal = acc.price * q;
+      return `<div class="summary-row">
+        <div class="summary-row-label">${acc.name} × ${q}</div>
+        <div class="summary-row-val">$${fmtNum(subtotal)}</div>
+      </div>`;
+    }).join('');
+  } else {
+    extrasCard.style.display = 'none';
+  }
+
+  recalcTotal();
+}
+
+function recalcTotal() {
+  const equipPrice = parseFloat(document.getElementById('sumEquipPrice').value) || 0;
+  const servicePrice = parseFloat(document.getElementById('sumServicePrice').value) || 0;
+  let extrasTotal = 0;
+  ACCESSORIES.forEach(acc => {
+    extrasTotal += (accQty[acc.id]||0) * acc.price;
+  });
+  const subtotal = equipPrice + servicePrice + extrasTotal;
+  const discPct = parseFloat(document.getElementById('discountPct').value) || 0;
+  const discAmt = subtotal * discPct / 100;
+  const total = subtotal - discAmt;
+  document.getElementById('discountBadgeAmt').textContent = `−$${fmtNum(Math.round(discAmt))}`;
+  document.getElementById('grandTotal').textContent = fmtNum(Math.round(total));
+}
+
+// ============================================================
+// PDF GENERATION
+// ============================================================
+function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const pageW = 210, margin = 18;
+  let y = 0;
+
+  // Header BG
+  doc.setFillColor(13, 15, 20);
+  doc.rect(0, 0, pageW, 45, 'F');
+
+  // Accent bar
+  doc.setFillColor(0, 229, 255);
+  doc.rect(0, 0, 4, 45, 'F');
+
+  // Title
+  doc.setTextColor(0, 229, 255);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CotizaClima', 14, 18);
+
+  doc.setTextColor(200, 210, 230);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Sistema profesional de cotización HVAC', 14, 25);
+
+  // Quote number & date
+  doc.setTextColor(140, 160, 200);
+  doc.setFontSize(8);
+  doc.text(document.getElementById('sumQuoteNum').textContent, pageW - margin, 14, { align: 'right' });
+  doc.text(document.getElementById('sumDate').textContent, pageW - margin, 20, { align: 'right' });
+  doc.setTextColor(0, 229, 255);
+  doc.setFontSize(8);
+  doc.text('Válido por 15 días', pageW - margin, 26, { align: 'right' });
+
+  y = 55;
+
+  // CLIENT SECTION
+  const clientName = document.getElementById('clientName').value || '—';
+  const clientRut = document.getElementById('clientRut').value || '';
+  const clientPhone = document.getElementById('clientPhone').value || '—';
+  const clientEmail = document.getElementById('clientEmail').value || '';
+  const clientAddress = document.getElementById('clientAddress').value || '—';
+  const clientCity = document.getElementById('clientCity').value || '';
+  const clientRegion = document.getElementById('clientRegion').value || '';
+  const clientProperty = document.getElementById('clientProperty').value || '';
+
+  sectionHeader(doc, '  DATOS DEL CLIENTE', margin, y, pageW - margin*2);
+  y += 10;
+
+  const clientData = [
+    ['Nombre', clientName],
+    ...(clientRut ? [['RUT', clientRut]] : []),
+    ['Teléfono', clientPhone],
+    ...(clientEmail ? [['Email', clientEmail]] : []),
+    ['Dirección', `${clientAddress}${clientCity?', '+clientCity:''}${clientRegion?', '+clientRegion:''}`],
+    ...(clientProperty ? [['Inmueble', clientProperty]] : []),
+  ];
+  clientData.forEach(([label, val]) => {
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(100, 120, 160);
+    doc.text(label + ':', margin + 2, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(40, 50, 70);
+    doc.text(val, margin + 35, y);
+    y += 6;
+  });
+  y += 4;
+
+  // EQUIPMENT
+  const ac = selectedAC !== null ? allAC[selectedAC] : null;
+  const cap = ac ? ac.capacities.find(c => c.btu_capacity === selectedBTU) : null;
+  const svc = SERVICES.find(s => s.id === selectedService);
+  const activeExtras = ACCESSORIES.filter(acc => (accQty[acc.id]||0) > 0);
+
+  sectionHeader(doc, '  DETALLE EQUIPOS Y SERVICIOS', margin, y, pageW - margin*2);
+  y += 8;
+
+  const tableBody = [];
+
+  if (ac && cap) {
+    tableBody.push([
+      `${ac.brand_model}\n${ac.type} · ${ac.refrigerant} · Kit ${ac.installation_kit}`,
+      `${(selectedBTU/1000).toFixed(0)}.000 BTU`,
+      '1',
+      `$${fmtNum(cap.net_price)}`,
+      `$${fmtNum(cap.price_with_tax)}`
+    ]);
+  }
+
+  if (svc) {
+    tableBody.push([
+      `${svc.emoji} ${svc.name}\n${svc.desc}`,
+      'Servicio',
+      '1',
+      svc.price > 0 ? `$${fmtNum(Math.round(svc.price/1.19))}` : '$0',
+      svc.price > 0 ? `$${fmtNum(svc.price)}` : 'Sin costo'
+    ]);
+  }
+
+  activeExtras.forEach(acc => {
+    const q = accQty[acc.id];
+    tableBody.push([
+      `${acc.icon} ${acc.name}\n${acc.desc}`,
+      'Accesorio',
+      String(q),
+      `$${fmtNum(acc.price)}`,
+      `$${fmtNum(acc.price * q)}`
+    ]);
+  });
+
+  doc.autoTable({
+    startY: y,
+    head: [['DESCRIPCIÓN', 'TIPO', 'CANT.', 'P. NETO', 'P. c/IVA']],
+    body: tableBody,
+    margin: { left: margin, right: margin },
+    styles: { fontSize: 8, font: 'helvetica', cellPadding: 4, textColor: [40, 50, 70] },
+    headStyles: {
+      fillColor: [13, 15, 20],
+      textColor: [0, 229, 255],
+      fontStyle: 'bold',
+      fontSize: 8
+    },
+    alternateRowStyles: { fillColor: [245, 247, 252] },
+    columnStyles: {
+      0: { cellWidth: 72 },
+      1: { cellWidth: 22, halign: 'center' },
+      2: { cellWidth: 14, halign: 'center' },
+      3: { cellWidth: 28, halign: 'right' },
+      4: { cellWidth: 28, halign: 'right', fontStyle: 'bold' }
+    },
+  });
+
+  y = doc.lastAutoTable.finalY + 8;
+
+  // TOTALS
+  const equipP = parseFloat(document.getElementById('sumEquipPrice').value) || 0;
+  const svcP = parseFloat(document.getElementById('sumServicePrice').value) || 0;
+  let extrasP = 0;
+  ACCESSORIES.forEach(acc => { extrasP += (accQty[acc.id]||0) * acc.price; });
+  const subtotal = equipP + svcP + extrasP;
+  const discPct = parseFloat(document.getElementById('discountPct').value) || 0;
+  const discAmt = subtotal * discPct / 100;
+  const total = subtotal - discAmt;
+
+  const totX = pageW - margin - 70;
+  const totW = 70;
+
+  doc.setFillColor(245, 247, 252);
+  doc.rect(totX, y, totW, discPct > 0 ? 28 : 20, 'F');
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(80, 90, 110);
+  doc.text('Subtotal:', totX + 4, y + 7);
+  doc.text(`$${fmtNum(Math.round(subtotal))}`, totX + totW - 4, y + 7, { align: 'right' });
+
+  if (discPct > 0) {
+    doc.setTextColor(200, 120, 0);
+    doc.text(`Descuento (${discPct}%):`, totX + 4, y + 14);
+    doc.text(`−$${fmtNum(Math.round(discAmt))}`, totX + totW - 4, y + 14, { align: 'right' });
+    y += 7;
+  }
+
+  doc.setFillColor(0, 229, 255);
+  doc.rect(totX, y + 12, totW, 10, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(13, 15, 20);
+  doc.setFontSize(10);
+  doc.text('TOTAL:', totX + 4, y + 19);
+  doc.text(`$${fmtNum(Math.round(total))}`, totX + totW - 4, y + 19, { align: 'right' });
+
+  y += 30;
+
+  // SERVICE NOTES
+  const notes = document.getElementById('serviceNotes').value;
+  if (notes) {
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(80, 90, 110);
+    doc.text('Observaciones:', margin, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 70, 90);
+    const lines = doc.splitTextToSize(notes, pageW - margin*2);
+    doc.text(lines, margin, y);
+    y += lines.length * 4 + 6;
+  }
+
+  // CLIENT NOTES
+  const clientNotes = document.getElementById('clientNotes').value;
+  if (clientNotes) {
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(80, 90, 110);
+    doc.text('Notas adicionales:', margin, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 70, 90);
+    const lines = doc.splitTextToSize(clientNotes, pageW - margin*2);
+    doc.text(lines, margin, y);
+    y += lines.length * 4 + 6;
+  }
+
+  // FOOTER
+  const pageH = 297;
+  doc.setFillColor(13, 15, 20);
+  doc.rect(0, pageH - 18, pageW, 18, 'F');
+  doc.setFillColor(0, 229, 255);
+  doc.rect(0, pageH - 18, 4, 18, 'F');
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(140, 160, 200);
+  doc.text('CotizaClima · Generado con CotizaClima App', margin + 4, pageH - 9);
+  doc.setTextColor(0, 229, 255);
+  doc.text(quoteNumber, pageW - margin, pageH - 9, { align: 'right' });
+
+  doc.save(`${quoteNumber}.pdf`);
+  showToast('📄 PDF generado correctamente', 'success');
+}
+
+function sectionHeader(doc, text, x, y, w) {
+  doc.setFillColor(13, 15, 20);
+  doc.rect(x, y - 5, w, 8, 'F');
+  doc.setTextColor(0, 229, 255);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text(text, x + 2, y);
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function fmtNum(n) {
+  return Math.round(n).toLocaleString('es-CL');
+}
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function resetAll() {
+  selectedAC = null;
+  selectedBTU = null;
+  selectedService = null;
+  accQty = {};
+  document.getElementById('clientName').value = '';
+  document.getElementById('clientRut').value = '';
+  document.getElementById('clientPhone').value = '';
+  document.getElementById('clientEmail').value = '';
+  document.getElementById('clientAddress').value = '';
+  document.getElementById('clientCity').value = '';
+  document.getElementById('clientNotes').value = '';
+  document.getElementById('serviceNotes').value = '';
+  document.getElementById('discountPct').value = '';
+  document.getElementById('btnStep1Next').disabled = true;
+  document.getElementById('btnStep1Next').style.opacity = '0.4';
+  document.getElementById('btnStep2Next').disabled = true;
+  document.getElementById('btnStep2Next').style.opacity = '0.4';
+  generateQuoteNumber();
+  renderACGrid();
+  renderAccGrid();
+  renderServiceGrid();
+  goToStep(1);
+  showToast('🔄 Nueva cotización iniciada', 'success');
+}
+
+function closeConfigModal() {
+  document.getElementById('configModal').classList.remove('open');
+}
+
+// ⚙️ Doble click en logo abre configuración Firebase
+document.querySelector('.logo-icon').addEventListener('dblclick', () => {
+  // Pre-llenar con URL guardada si existe
+  try {
+    const saved = localStorage.getItem('fb_rtdb_url') || '';
+    const savedNode = localStorage.getItem('fb_rtdb_node') || 'air_conditioners';
+    const urlInput = document.getElementById('cfgFirebaseUrl');
+    const nodeInput = document.getElementById('cfgNode');
+    if (urlInput && saved) urlInput.value = saved;
+    if (nodeInput) nodeInput.value = savedNode;
+  } catch(e) {}
+  // Limpiar estado anterior
+  const status = document.getElementById('cfgStatus');
+  if (status) status.style.display = 'none';
+  document.getElementById('configModal').classList.add('open');
+});
+document.getElementById('configModal').addEventListener('click', function(e) {
+  if (e.target === this) closeConfigModal();
+});
+</script>
+</body>
+</html>
