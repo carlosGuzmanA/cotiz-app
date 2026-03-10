@@ -903,7 +903,7 @@ async function generatePDF() {
   doc.setFillColor(145, 152, 164);
   doc.rect(0, 0, 4, headerH, 'F');
 
-  const logoSize = 12;
+  const logoSize = 20;
   const logoX = 18;
   const logoY = ((titleY + 15) / 2) - (logoSize / 2);
 
