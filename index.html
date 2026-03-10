@@ -1495,7 +1495,12 @@ function updateStep1NextButton() {
 
 function preloadInstallationsFromEquipment() {
   const equipCount = getSelectedEquipmentItems().reduce((sum, item) => sum + item.qty, 0);
-  serviceQtyMap.instalacion = equipCount;
+  if (equipCount === 0) {
+    serviceQtyMap.instalacion = 0;
+  } else if ((serviceQtyMap.instalacion || 0) === 0) {
+    // Precarga por defecto: 1 instalacion por cada equipo agregado.
+    serviceQtyMap.instalacion = equipCount;
+  }
   updateMultiServiceInputs();
   updateStep2NextButton();
   renderServiceGrid();
@@ -2257,7 +2262,7 @@ function recalcTotal() {
 // ============================================================
 // PDF GENERATION
 // ============================================================
-function generatePDF() {
+async function generatePDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
@@ -2272,16 +2277,26 @@ function generatePDF() {
   doc.setFillColor(0, 229, 255);
   doc.rect(0, 0, 4, 45, 'F');
 
+  // Logo PNG (si existe en la carpeta del proyecto)
+  let titleX = 14;
+  let subtitleX = 14;
+  const logoSource = await getPdfLogoSource();
+  if (logoSource) {
+    doc.addImage(logoSource, 'PNG', 14, 8, 16, 16, undefined, 'FAST');
+    titleX = 34;
+    subtitleX = 34;
+  }
+
   // Title
   doc.setTextColor(0, 229, 255);
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text('CotizaClima', 14, 18);
+  doc.text('CotizaClima', titleX, 18);
 
   doc.setTextColor(200, 210, 230);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text('Sistema profesional de cotización HVAC', 14, 25);
+  doc.text('Sistema profesional de cotización HVAC', subtitleX, 25);
 
   // Quote number & date
   doc.setTextColor(140, 160, 200);
@@ -2477,6 +2492,71 @@ function generatePDF() {
 
   doc.save(`${quoteNumber}.pdf`);
   showToast('📄 PDF generado correctamente', 'success');
+}
+
+let pdfLogoCache = null;
+
+async function getPdfLogoSource() {
+  if (pdfLogoCache) return pdfLogoCache;
+
+  // Prioriza carga como Image para soportar mejor apertura local (file://).
+  const img = await loadImageFromCandidates(['refripro.png', './refripro.png', '/refripro.png']);
+  if (img) {
+    pdfLogoCache = img;
+    return img;
+  }
+
+  // Fallback: intentar data URL via fetch para escenarios HTTP.
+  const dataUrl = await getPdfLogoDataUrlFallback();
+  if (dataUrl) {
+    pdfLogoCache = dataUrl;
+    return dataUrl;
+  }
+
+  return null;
+}
+
+function loadImageFromCandidates(candidates) {
+  return new Promise((resolve) => {
+    let i = 0;
+    const tryNext = () => {
+      if (i >= candidates.length) {
+        resolve(null);
+        return;
+      }
+      const path = candidates[i++];
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => tryNext();
+      img.src = path;
+    };
+    tryNext();
+  });
+}
+
+async function getPdfLogoDataUrlFallback() {
+  const candidates = ['refripro.png', './refripro.png'];
+  for (const path of candidates) {
+    try {
+      const res = await fetch(path);
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      const dataUrl = await blobToDataUrl(blob);
+      if (dataUrl) return dataUrl;
+    } catch (e) {
+      // Ignorar y probar siguiente ruta
+    }
+  }
+  return null;
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 function sectionHeader(doc, text, x, y, w) {
