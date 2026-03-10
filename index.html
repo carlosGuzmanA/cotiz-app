@@ -1023,8 +1023,8 @@
         <option value="">Toda garantía</option>
         <option value="1">1 año</option>
         <option value="3">3 años</option>
-      </select> -->
-      <!-- <select class="filter-select" id="filterWifi" onchange="filterAC()">
+      </select>
+      <select class="filter-select" id="filterWifi" onchange="filterAC()">
         <option value="">WiFi (todos)</option>
         <option value="Yes">Con WiFi</option>
         <option value="Optional">WiFi opcional</option>
@@ -1753,8 +1753,8 @@ function filterAC() {
   const brand = document.getElementById('filterBrand').value;
   const btu = parseInt(document.getElementById('filterBTU').value) || 0;
   const ref = document.getElementById('filterRef').value;
-  const warranty = document.getElementById('filterWarranty').value;
-  const wifi = document.getElementById('filterWifi').value;
+  // const warranty = document.getElementById('filterWarranty').value;
+  // const wifi = document.getElementById('filterWifi').value;
 
   filteredAC = allAC.filter(ac => {
     const brandName = (ac.marca || '').toLowerCase();
@@ -1762,9 +1762,9 @@ function filterAC() {
     if (search && !brandName.includes(search) && !modelName.includes(search)) return false;
     if (brand && (ac.marca || '') !== brand) return false;
     if (ref && ac.refrigerant !== ref) return false;
-    if (wifi && ac.wifi !== wifi) return false;
-    if (warranty === '1' && !ac.warranty.includes('1')) return false;
-    if (warranty === '3' && !ac.warranty.includes('3')) return false;
+    // if (wifi && ac.wifi !== wifi) return false;
+    // if (warranty === '1' && !ac.warranty.includes('1')) return false;
+    // if (warranty === '3' && !ac.warranty.includes('3')) return false;
     if (btu && !ac.capacities.find(c => c.btu_capacity === btu)) return false;
     return true;
   });
