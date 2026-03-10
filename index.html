@@ -1064,6 +1064,21 @@
       <!-- Filled by JS -->
     </div>
 
+    <div class="summary-card" id="repairConfigCard" style="display:none; margin-bottom:14px;">
+      <div class="summary-title">Ajuste reparación</div>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Cantidad</label>
+          <input type="number" class="form-input" id="repairQty" min="1" step="1" value="1" oninput="updateRepairServiceValue()">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Valor unitario</label>
+          <input type="number" class="form-input" id="repairUnitValue" min="0" step="1000" value="10000" oninput="updateRepairServiceValue()">
+        </div>
+      </div>
+      <div class="notes-hint" id="repairPreview">Total reparación: $10.000</div>
+    </div>
+
     <div class="divider"></div>
     <div class="form-group">
       <label class="form-label">Observaciones del servicio</label>
@@ -1396,10 +1411,10 @@ const DEMO_DATA = [
 // ============================================================
 
 const SERVICES = [
-  { id:'instalacion', name:'Instalación nueva', desc:'Primera instalación del equipo', price:85000, emoji:'🏗️' },
-  { id:'mantencion', name:'Mantención', desc:'Limpieza y revisión general', price:45000, emoji:'🔧' },
+  { id:'instalacion', name:'Instalación nueva', desc:'Primera instalación del equipo', price:100000, emoji:'🏗️' },
+  { id:'mantencion', name:'Mantención', desc:'Limpieza y revisión general', price:30000, emoji:'🔧' },
   { id:'cambio', name:'Cambio + instalación', desc:'Retiro equipo antiguo + nuevo', price:120000, emoji:'🔄' },
-  { id:'reparacion', name:'Reparación', desc:'Diagnóstico y reparación de fallas', price:55000, emoji:'⚙️' },
+  { id:'reparacion', name:'Reparación', desc:'Diagnóstico y reparación de fallas', price:10000, emoji:'⚙️' },
   { id:'garantia', name:'Visita garantía', desc:'Revisión por garantía vigente', price:0, emoji:'✅' },
   { id:'presupuesto', name:'Solo presupuesto', desc:'Cotización sin instalación', price:0, emoji:'📋' },
 ];
@@ -1427,6 +1442,8 @@ let accQty = {};
 let currentStep = 1;
 let quoteNumber = '';
 let toastTimer = null;
+let repairQty = 1;
+let repairUnitValue = 10000;
 
 // ============================================================
 // INIT
@@ -1815,21 +1832,66 @@ function filterAC() {
 // ============================================================
 function renderServiceGrid() {
   document.getElementById('serviceGrid').innerHTML = SERVICES.map(s => `
+    ${(() => {
+      const displayPrice = s.id === 'reparacion'
+        ? repairQty * repairUnitValue
+        : s.price;
+      return `
     <div class="service-card ${selectedService === s.id ? 'selected' : ''}" onclick="selectService('${s.id}')">
       <div class="service-emoji">${s.emoji}</div>
       <div class="service-name">${s.name}</div>
-      <div class="service-price">${s.price > 0 ? '$'+fmtNum(s.price) : 'Sin costo'}</div>
+      <div class="service-price">${displayPrice > 0 ? '$'+fmtNum(displayPrice) : 'Sin costo'}</div>
     </div>
+  `;
+    })()}
   `).join('');
 }
 
 function selectService(id) {
   selectedService = id;
+  toggleRepairInputs();
   renderServiceGrid();
   const btn = document.getElementById('btnStep2Next');
   btn.disabled = false;
   btn.style.opacity = '1';
   showToast('✅ Servicio seleccionado', 'success');
+}
+
+function toggleRepairInputs() {
+  const card = document.getElementById('repairConfigCard');
+  if (!card) return;
+  const isRepair = selectedService === 'reparacion';
+  card.style.display = isRepair ? 'block' : 'none';
+  if (isRepair) {
+    updateRepairServiceValue();
+  }
+}
+
+function updateRepairServiceValue() {
+  const qtyEl = document.getElementById('repairQty');
+  const unitEl = document.getElementById('repairUnitValue');
+  const preview = document.getElementById('repairPreview');
+
+  repairQty = Math.max(1, parseInt((qtyEl && qtyEl.value) || '1', 10) || 1);
+  repairUnitValue = Math.max(0, parseFloat((unitEl && unitEl.value) || '0') || 0);
+
+  if (qtyEl) qtyEl.value = repairQty;
+  if (unitEl) unitEl.value = repairUnitValue;
+  if (preview) preview.textContent = `Total reparación: $${fmtNum(repairQty * repairUnitValue)}`;
+
+  if (selectedService === 'reparacion') {
+    renderServiceGrid();
+  }
+}
+
+function getCurrentServiceValues(svc) {
+  if (!svc) return { qty: 0, unitPrice: 0, totalPrice: 0 };
+  if (svc.id === 'reparacion') {
+    const qty = Math.max(1, repairQty || 1);
+    const unitPrice = Math.max(0, repairUnitValue || 0);
+    return { qty, unitPrice, totalPrice: qty * unitPrice };
+  }
+  return { qty: 1, unitPrice: svc.price, totalPrice: svc.price };
 }
 
 // ============================================================
@@ -1924,6 +1986,7 @@ function buildSummary() {
   const ac = selectedAC !== null ? allAC[selectedAC] : null;
   const cap = ac ? ac.capacities.find(c => c.btu_capacity === selectedBTU) : null;
   const svc = SERVICES.find(s => s.id === selectedService);
+  const svcValues = getCurrentServiceValues(svc);
 
   // Quote info
   document.getElementById('sumQuoteNum').textContent = quoteNumber;
@@ -1955,8 +2018,12 @@ function buildSummary() {
 
   // Service
   if (svc) {
-    document.getElementById('sumServiceName').textContent = svc.name;
-    document.getElementById('sumServicePrice').value = svc.price;
+    let serviceLabel = svc.name;
+    if (svc.id === 'reparacion') {
+      serviceLabel = `${svc.name} (${svcValues.qty} x $${fmtNum(svcValues.unitPrice)})`;
+    }
+    document.getElementById('sumServiceName').textContent = serviceLabel;
+    document.getElementById('sumServicePrice').value = svcValues.totalPrice;
     const notes = document.getElementById('serviceNotes').value;
     if (notes) {
       document.getElementById('sumNotesRow').style.display = 'flex';
@@ -2082,6 +2149,7 @@ function generatePDF() {
   const ac = selectedAC !== null ? allAC[selectedAC] : null;
   const cap = ac ? ac.capacities.find(c => c.btu_capacity === selectedBTU) : null;
   const svc = SERVICES.find(s => s.id === selectedService);
+  const svcValues = getCurrentServiceValues(svc);
   const activeExtras = ACCESSORIES.filter(acc => (accQty[acc.id]||0) > 0);
 
   sectionHeader(doc, '  DETALLE EQUIPOS Y SERVICIOS', margin, y, pageW - margin*2);
@@ -2100,12 +2168,15 @@ function generatePDF() {
   }
 
   if (svc) {
+    const serviceDesc = svc.id === 'reparacion'
+      ? `${svc.emoji} ${svc.name}\n${svc.desc} · ${svcValues.qty} x $${fmtNum(svcValues.unitPrice)}`
+      : `${svc.emoji} ${svc.name}\n${svc.desc}`;
     tableBody.push([
-      `${svc.emoji} ${svc.name}\n${svc.desc}`,
+      serviceDesc,
       'Servicio',
-      '1',
-      svc.price > 0 ? `$${fmtNum(Math.round(svc.price/1.19))}` : '$0',
-      svc.price > 0 ? `$${fmtNum(svc.price)}` : 'Sin costo'
+      String(svcValues.qty),
+      svcValues.totalPrice > 0 ? `$${fmtNum(Math.round(svcValues.totalPrice/1.19))}` : '$0',
+      svcValues.totalPrice > 0 ? `$${fmtNum(svcValues.totalPrice)}` : 'Sin costo'
     ]);
   }
 
@@ -2287,6 +2358,13 @@ function resetAll() {
   document.getElementById('btnStep1Next').style.opacity = '0.4';
   document.getElementById('btnStep2Next').disabled = true;
   document.getElementById('btnStep2Next').style.opacity = '0.4';
+  repairQty = 1;
+  repairUnitValue = 55000;
+  const repairQtyEl = document.getElementById('repairQty');
+  const repairUnitEl = document.getElementById('repairUnitValue');
+  if (repairQtyEl) repairQtyEl.value = 1;
+  if (repairUnitEl) repairUnitEl.value = 55000;
+  toggleRepairInputs();
   generateQuoteNumber();
   renderACGrid();
   renderAccGrid();
