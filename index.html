@@ -1382,18 +1382,9 @@ const DEMO_DATA = [
   { type:"Split Inverter", refrigerant:"R410", brand_model:"ARTCOOL MIRROR", wifi:"Yes", warranty:"1 year", installation_kit:"3 metros", capacities:[{btu_capacity:12000,net_price:453378,price_with_tax:539520},{btu_capacity:18000,net_price:522235,price_with_tax:621460}]}
 ];
 
-const ACCESSORIES = [
-  { id:'can1', name:'Cañería extra 1m', desc:'Tubo de cobre + aislación térmica', price:8500, icon:'🔩', color:'rgba(0,229,255,0.1)' },
-  { id:'can3', name:'Cañería extra 3m', desc:'Kit completo 3 metros', price:22000, icon:'🔩', color:'rgba(0,229,255,0.1)' },
-  { id:'cable5', name:'Cable eléctrico 5m', desc:'Cable 3x2.5mm TTU', price:6500, icon:'⚡', color:'rgba(255,214,0,0.1)' },
-  { id:'cable10', name:'Cable eléctrico 10m', desc:'Cable 3x2.5mm TTU', price:12000, icon:'⚡', color:'rgba(255,214,0,0.1)' },
-  { id:'soporte', name:'Soporte mural reforzado', desc:'Soportes de fijación para unidad exterior', price:18000, icon:'🏗️', color:'rgba(124,77,255,0.1)' },
-  { id:'drenaje', name:'Kit de drenaje', desc:'Manguera drenaje + accesorios', price:9500, icon:'💧', color:'rgba(0,150,255,0.1)' },
-  { id:'breaker', name:'Breaker termomagnético', desc:'10A - protección eléctrica', price:14000, icon:'🔌', color:'rgba(255,107,53,0.1)' },
-  { id:'limpieza', name:'Limpieza profesional', desc:'Lavado unidad evaporadora', price:25000, icon:'🧹', color:'rgba(0,230,118,0.1)' },
-  { id:'canaleta', name:'Canaleta PVC 2m', desc:'Protección y acabado estético', price:7500, icon:'📦', color:'rgba(124,77,255,0.1)' },
-  { id:'gas', name:'Carga de gas refrigerante', desc:'Recarga R32 o R410 (150g)', price:35000, icon:'🧊', color:'rgba(0,229,255,0.1)' },
-];
+// ============================================================
+// ACCESORIOS — se cargan desde Firebase o desde el fallback demo
+// ============================================================
 
 const SERVICES = [
   { id:'instalacion', name:'Instalación nueva', desc:'Primera instalación del equipo', price:85000, emoji:'🏗️' },
@@ -1442,7 +1433,9 @@ function init() {
   const activeToken = FIREBASE_CONNECTION.authToken || savedCfg.authToken || '';
 
   if (activeUrl) {
+    // Carga equipos y accesorios en paralelo desde Firebase
     loadFromFirebase(activeUrl, activeNode, activeToken);
+    loadAccessoriesFromFirebase(activeUrl, activeToken);
   } else {
     loadDemoData();
     showFirebaseStatus('error', 'Sin Firebase configurado — usando datos demo');
@@ -1497,6 +1490,37 @@ async function loadFromFirebase(url, node, authToken = '') {
     showFirebaseStatus('error', e.message);
     showToast('Firebase: usando datos demo', 'error');
     if (!Array.isArray(allAC) || allAC.length === 0) loadDemoData();
+  }
+}
+
+/**
+ * Carga accesorios desde Firebase Realtime Database.
+ * Nodo: accessories (mismo proyecto que air_conditioners)
+ * Si falla, mantiene los accesorios demo definidos en ACCESSORIES.
+ */
+async function loadAccessoriesFromFirebase(url, authToken = '') {
+  const cleanUrl = url.replace(/\/$/, '');
+  const endpoint = authToken
+    ? `${cleanUrl}/accessories.json?auth=${authToken}`
+    : `${cleanUrl}/accessories.json`;
+
+  try {
+    const res = await fetch(endpoint);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const raw = await res.json();
+    if (!raw) throw new Error('Nodo accessories vacío');
+
+    const data = normalizeFirebaseArrays(raw);
+    if (!Array.isArray(data) || data.length === 0) throw new Error('Sin accesorios');
+
+    ACCESSORIES = data;
+    accQty = {}; // reset cantidades al recargar
+    renderAccGrid();
+    console.log(`✅ ${data.length} accesorios cargados desde Firebase`);
+
+  } catch(e) {
+    // Silencioso — mantiene los accesorios demo ya definidos
+    console.warn('Accesorios: usando datos demo —', e.message);
   }
 }
 
@@ -1599,6 +1623,10 @@ async function loadFromFirebaseModal(url, node, authToken = '') {
     filteredAC = [...allAC];
     renderBrandFilterOptions();
     renderACGrid();
+
+    // También recargar accesorios desde el mismo proyecto Firebase
+    loadAccessoriesFromFirebase(cleanUrl, authToken);
+
     showCfgStatus('ok', `✅ Conectado — ${data.length} equipos cargados`);
     showToast(`✅ Firebase conectado · ${data.length} equipos`, 'success');
 
