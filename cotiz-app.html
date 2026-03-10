@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Lato:wght@300;400;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script> 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
 
 <style>
   :root {
@@ -1002,6 +1002,9 @@
     </div>
 
     <div class="filters-grid">
+      <select class="filter-select" id="filterBrand" onchange="filterAC()">
+        <option value="">Todas las marcas</option>
+      </select>
       <select class="filter-select" id="filterBTU" onchange="filterAC()">
         <option value="">Todos los BTU</option>
         <option value="9000">9.000 BTU</option>
@@ -1016,17 +1019,17 @@
         <option value="R32">R32</option>
         <option value="R410">R410</option>
       </select>
-      <select class="filter-select" id="filterWarranty" onchange="filterAC()">
+      <!-- <select class="filter-select" id="filterWarranty" onchange="filterAC()">
         <option value="">Toda garantía</option>
         <option value="1">1 año</option>
         <option value="3">3 años</option>
-      </select>
-      <select class="filter-select" id="filterWifi" onchange="filterAC()">
+      </select> -->
+      <!-- <select class="filter-select" id="filterWifi" onchange="filterAC()">
         <option value="">WiFi (todos)</option>
         <option value="Yes">Con WiFi</option>
         <option value="Optional">WiFi opcional</option>
         <option value="Universal">WiFi universal</option>
-      </select>
+      </select> -->
     </div>
 
     <div class="results-count" id="resultsCount"></div>
@@ -1321,6 +1324,13 @@
       <div class="notes-hint" style="margin-top:6px">Nombre del array en tu JSON de Firebase.</div>
     </div>
 
+    <div class="form-group">
+      <label class="form-label">Token/Secret (opcional)</label>
+      <input type="password" class="form-input" id="cfgToken"
+        placeholder="Solo si tus reglas de lectura lo exigen">
+      <div class="notes-hint" style="margin-top:6px">Si tu base tiene lectura publica, dejalo vacio.</div>
+    </div>
+
     <button class="btn btn-primary" onclick="saveFirebaseConfig()" style="margin-top:8px">
       🔗 Guardar y conectar
     </button>
@@ -1395,13 +1405,14 @@ const SERVICES = [
 
 // ============================================================
 // FIREBASE REALTIME DATABASE CONFIG
-// ▶ Solo cambia estos dos valores con los de tu proyecto:
+// ▶ Pega aqui tu conexion principal (opcional).
+// Si dejas databaseURL vacio, la app usara lo guardado en el modal.
 // ============================================================
-const FIREBASE_URL = 'TU_URL_AQUI';
-// Ejemplo: 'https://mi-proyecto-default-rtdb.firebaseio.com'
-
-const FIREBASE_NODE = 'air_conditioners';
-// Debe coincidir con el nombre del array en tu JSON de Firebase
+const FIREBASE_CONNECTION = {
+  databaseURL: 'https://cotizaciones-app-ece65-default-rtdb.firebaseio.com/', // Ejemplo: 'https://mi-proyecto-default-rtdb.firebaseio.com'
+  node: 'air_conditioners', // Nodo donde vive el array de equipos
+  authToken: '' // Opcional: token/secret si tus reglas requieren auth para leer
+};
 
 // ============================================================
 // STATE
@@ -1423,15 +1434,17 @@ function init() {
   try { renderAccGrid(); } catch(e) {}
   try { renderServiceGrid(); } catch(e) {}
 
-  // Mostrar datos demo de inmediato (sin pantalla en blanco)
-  loadDemoData();
-
-  // Si hay URL de Firebase configurada, cargar datos reales encima
-  const savedUrl = getSavedFirebaseUrl();
-  const activeUrl = (FIREBASE_URL !== 'TU_URL_AQUI') ? FIREBASE_URL : savedUrl;
+  // Priorizar Firebase al iniciar. Si no hay config o falla, usar demo.
+  const savedCfg = getSavedFirebaseConfig();
+  const activeUrl = FIREBASE_CONNECTION.databaseURL || savedCfg.databaseURL;
+  const activeNode = FIREBASE_CONNECTION.node || savedCfg.node || 'air_conditioners';
+  const activeToken = FIREBASE_CONNECTION.authToken || savedCfg.authToken || '';
 
   if (activeUrl) {
-    loadFromFirebase(activeUrl, FIREBASE_NODE);
+    loadFromFirebase(activeUrl, activeNode, activeToken);
+  } else {
+    loadDemoData();
+    showFirebaseStatus('error', 'Sin Firebase configurado — usando datos demo');
   }
 }
 
@@ -1450,9 +1463,9 @@ if (document.readyState === 'loading') {
  * La URL pública termina en /<nodo>.json sin necesidad de API key
  * cuando las reglas permiten lectura pública.
  */
-async function loadFromFirebase(url, node) {
+async function loadFromFirebase(url, node, authToken = '') {
   const cleanUrl = url.replace(/\/$/, ''); // quitar slash final si existe
-  const endpoint = `${cleanUrl}/${node}.json`;
+  const endpoint = buildFirebaseEndpoint(cleanUrl, node, authToken);
 
   try {
     showFirebaseStatus('connecting');
@@ -1474,6 +1487,7 @@ async function loadFromFirebase(url, node) {
 
     allAC = data;
     filteredAC = [...allAC];
+    renderBrandFilterOptions();
     renderACGrid();
     showFirebaseStatus('ok', `${data.length} equipos cargados desde Firebase`);
     showToast(`✅ ${data.length} equipos actualizados`, 'success');
@@ -1481,7 +1495,7 @@ async function loadFromFirebase(url, node) {
   } catch(e) {
     showFirebaseStatus('error', e.message);
     showToast('Firebase: usando datos demo', 'error');
-    // Los datos demo ya están cargados, no hacemos nada más
+    if (!Array.isArray(allAC) || allAC.length === 0) loadDemoData();
   }
 }
 
@@ -1516,14 +1530,43 @@ function normalizeFirebaseArrays(obj) {
 // ============================================================
 // PERSISTENCIA DE CONFIG EN LOCALSTORAGE
 // ============================================================
-function getSavedFirebaseUrl() {
-  try { return localStorage.getItem('fb_rtdb_url') || ''; }
-  catch(e) { return ''; }
+function getSavedFirebaseConfig() {
+  try {
+    return {
+      databaseURL: localStorage.getItem('fb_rtdb_url') || '',
+      node: localStorage.getItem('fb_rtdb_node') || 'air_conditioners',
+      authToken: localStorage.getItem('fb_rtdb_token') || ''
+    };
+  } catch(e) {
+    return { databaseURL: '', node: 'air_conditioners', authToken: '' };
+  }
+}
+
+function buildFirebaseEndpoint(url, node, authToken = '') {
+  const cleanUrl = (url || '').trim().replace(/\/$/, '');
+  const safeNode = (node || 'air_conditioners').replace(/^\/+|\/+$/g, '');
+  let endpoint = '';
+
+  if (/\.json(\?|$)/i.test(cleanUrl)) {
+    endpoint = cleanUrl;
+  } else if (cleanUrl.endsWith(`/${safeNode}`)) {
+    endpoint = `${cleanUrl}.json`;
+  } else {
+    endpoint = `${cleanUrl}/${safeNode}.json`;
+  }
+
+  if (authToken) {
+    const separator = endpoint.includes('?') ? '&' : '?';
+    endpoint += `${separator}auth=${encodeURIComponent(authToken)}`;
+  }
+
+  return endpoint;
 }
 
 function saveFirebaseConfig() {
   const urlInput = document.getElementById('cfgFirebaseUrl').value.trim();
   const nodeInput = document.getElementById('cfgNode').value.trim() || 'air_conditioners';
+  const tokenInput = document.getElementById('cfgToken').value.trim();
 
   if (!urlInput || !urlInput.startsWith('https://')) {
     showCfgStatus('error', '⚠️ La URL debe comenzar con https://');
@@ -1532,14 +1575,15 @@ function saveFirebaseConfig() {
 
   try { localStorage.setItem('fb_rtdb_url', urlInput); } catch(e) {}
   try { localStorage.setItem('fb_rtdb_node', nodeInput); } catch(e) {}
+  try { localStorage.setItem('fb_rtdb_token', tokenInput); } catch(e) {}
 
   showCfgStatus('loading', '🔄 Conectando con Firebase…');
-  loadFromFirebaseModal(urlInput, nodeInput);
+  loadFromFirebaseModal(urlInput, nodeInput, tokenInput);
 }
 
-async function loadFromFirebaseModal(url, node) {
+async function loadFromFirebaseModal(url, node, authToken = '') {
   const cleanUrl = url.replace(/\/$/, '');
-  const endpoint = `${cleanUrl}/${node}.json`;
+  const endpoint = buildFirebaseEndpoint(cleanUrl, node, authToken);
 
   try {
     const res = await fetch(endpoint);
@@ -1552,6 +1596,7 @@ async function loadFromFirebaseModal(url, node) {
 
     allAC = data;
     filteredAC = [...allAC];
+    renderBrandFilterOptions();
     renderACGrid();
     showCfgStatus('ok', `✅ Conectado — ${data.length} equipos cargados`);
     showToast(`✅ Firebase conectado · ${data.length} equipos`, 'success');
@@ -1606,7 +1651,27 @@ function generateQuoteNumber() {
 function loadDemoData() {
   allAC = DEMO_DATA;
   filteredAC = [...allAC];
+  renderBrandFilterOptions();
   renderACGrid();
+}
+
+function renderBrandFilterOptions() {
+  const brandSelect = document.getElementById('filterBrand');
+  if (!brandSelect) return;
+
+  const selected = brandSelect.value;
+  const brands = [...new Set(
+    allAC
+      .map(ac => (ac.marca || '').trim())
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, 'es'));
+
+  brandSelect.innerHTML = '<option value="">Todas las marcas</option>' +
+    brands.map(brand => `<option value="${brand}">${brand}</option>`).join('');
+
+  if (selected && brands.includes(selected)) {
+    brandSelect.value = selected;
+  }
 }
 
 // ============================================================
@@ -1626,6 +1691,8 @@ function renderACGrid() {
   grid.innerHTML = filteredAC.map((ac, idx) => {
     const origIdx = allAC.indexOf(ac);
     const isSelected = selectedAC === origIdx;
+    const brand = (ac.marca || '').trim();
+    const displayName = brand ? `${brand} ${ac.brand_model}` : ac.brand_model;
     const refBadge = ac.refrigerant === 'R32' ? 'badge-r32' : 'badge-r410';
     const wifiLabel = ac.wifi === 'Yes' ? '📶 WiFi' : ac.wifi === 'Optional' ? '📶 WiFi opcional' : '📶 WiFi universal';
     const warYears = ac.warranty && ac.warranty.includes('3') ? '3 años' : '1 año';
@@ -1633,7 +1700,7 @@ function renderACGrid() {
     <div class="ac-card ${isSelected ? 'selected' : ''}" id="accard-${origIdx}">
       <div class="ac-header">
         <div>
-          <div class="ac-brand">${ac.brand_model}</div>
+          <div class="ac-brand">${displayName}</div>
           <div class="ac-type">${ac.type}</div>
         </div>
         <span class="ac-badge ${refBadge}">${ac.refrigerant}</span>
@@ -1683,13 +1750,17 @@ function selectAC(idx, btu) {
 
 function filterAC() {
   const search = document.getElementById('searchInput').value.toLowerCase();
+  const brand = document.getElementById('filterBrand').value;
   const btu = parseInt(document.getElementById('filterBTU').value) || 0;
   const ref = document.getElementById('filterRef').value;
   const warranty = document.getElementById('filterWarranty').value;
   const wifi = document.getElementById('filterWifi').value;
 
   filteredAC = allAC.filter(ac => {
-    if (search && !ac.brand_model.toLowerCase().includes(search)) return false;
+    const brandName = (ac.marca || '').toLowerCase();
+    const modelName = (ac.brand_model || '').toLowerCase();
+    if (search && !brandName.includes(search) && !modelName.includes(search)) return false;
+    if (brand && (ac.marca || '') !== brand) return false;
     if (ref && ac.refrigerant !== ref) return false;
     if (wifi && ac.wifi !== wifi) return false;
     if (warranty === '1' && !ac.warranty.includes('1')) return false;
@@ -2177,12 +2248,13 @@ function closeConfigModal() {
 document.querySelector('.logo-icon').addEventListener('dblclick', () => {
   // Pre-llenar con URL guardada si existe
   try {
-    const saved = localStorage.getItem('fb_rtdb_url') || '';
-    const savedNode = localStorage.getItem('fb_rtdb_node') || 'air_conditioners';
+    const savedCfg = getSavedFirebaseConfig();
     const urlInput = document.getElementById('cfgFirebaseUrl');
     const nodeInput = document.getElementById('cfgNode');
-    if (urlInput && saved) urlInput.value = saved;
-    if (nodeInput) nodeInput.value = savedNode;
+    const tokenInput = document.getElementById('cfgToken');
+    if (urlInput && savedCfg.databaseURL) urlInput.value = savedCfg.databaseURL;
+    if (nodeInput) nodeInput.value = savedCfg.node;
+    if (tokenInput) tokenInput.value = savedCfg.authToken;
   } catch(e) {}
   // Limpiar estado anterior
   const status = document.getElementById('cfgStatus');
