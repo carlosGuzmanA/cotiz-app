@@ -1064,6 +1064,21 @@
       <!-- Filled by JS -->
     </div>
 
+    <div class="summary-card" id="serviceQtyConfigCard" style="margin-bottom:14px;">
+      <div class="summary-title">Servicios Combinables</div>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Cantidad de instalaciones</label>
+          <input type="number" class="form-input" id="serviceQtyInstInput" min="0" step="1" value="0" oninput="updateServiceQtyValue()">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Cantidad de mantenciones</label>
+          <input type="number" class="form-input" id="serviceQtyMantInput" min="0" step="1" value="0" oninput="updateServiceQtyValue()">
+        </div>
+      </div>
+      <div class="notes-hint" id="serviceQtyPreview">Instalación: $0 · Mantención: $0</div>
+    </div>
+
     <div class="summary-card" id="repairConfigCard" style="display:none; margin-bottom:14px;">
       <div class="summary-title">Ajuste reparación</div>
       <div class="form-row">
@@ -1437,6 +1452,7 @@ let allAC = [];
 let filteredAC = [];
 let selectedAC = null;
 let selectedBTU = null;
+let selectedEquipments = {};
 let selectedService = null;
 let accQty = {};
 let currentStep = 1;
@@ -1444,6 +1460,46 @@ let quoteNumber = '';
 let toastTimer = null;
 let repairQty = 1;
 let repairUnitValue = 10000;
+let serviceQtyMap = { instalacion: 0, mantencion: 0 };
+
+function equipKey(idx, btu) {
+  return `${idx}__${btu}`;
+}
+
+function getSelectedEquipmentItems() {
+  return Object.entries(selectedEquipments)
+    .map(([key, qty]) => {
+      const [idxStr, btuStr] = key.split('__');
+      const idx = Number(idxStr);
+      const btu = Number(btuStr);
+      const ac = allAC[idx];
+      if (!ac || !qty) return null;
+      const cap = (ac.capacities || []).find(c => Number(c.btu_capacity) === btu);
+      if (!cap) return null;
+      return { key, idx, btu, qty, ac, cap };
+    })
+    .filter(Boolean);
+}
+
+function getEquipmentTotalPrice() {
+  return getSelectedEquipmentItems().reduce((sum, item) => sum + (item.cap.price_with_tax * item.qty), 0);
+}
+
+function updateStep1NextButton() {
+  const btn = document.getElementById('btnStep1Next');
+  if (!btn) return;
+  const hasItems = getSelectedEquipmentItems().length > 0;
+  btn.disabled = !hasItems;
+  btn.style.opacity = hasItems ? '1' : '0.4';
+}
+
+function preloadInstallationsFromEquipment() {
+  const equipCount = getSelectedEquipmentItems().reduce((sum, item) => sum + item.qty, 0);
+  serviceQtyMap.instalacion = equipCount;
+  updateMultiServiceInputs();
+  updateStep2NextButton();
+  renderServiceGrid();
+}
 
 // ============================================================
 // INIT
@@ -1452,6 +1508,8 @@ function init() {
   try { generateQuoteNumber(); } catch(e) {}
   try { renderAccGrid(); } catch(e) {}
   try { renderServiceGrid(); } catch(e) {}
+  try { updateMultiServiceInputs(); } catch(e) {}
+  try { updateStep2NextButton(); } catch(e) {}
 
   // Priorizar Firebase al iniciar. Si no hay config o falla, usar demo.
   const savedCfg = getSavedFirebaseConfig();
@@ -1510,6 +1568,7 @@ async function loadFromFirebase(url, node, authToken = '') {
     filteredAC = [...allAC];
     renderBrandFilterOptions();
     renderACGrid();
+    updateStep1NextButton();
     showFirebaseStatus('ok', `${data.length} equipos cargados desde Firebase`);
     showToast(`✅ ${data.length} equipos actualizados`, 'success');
 
@@ -1543,7 +1602,7 @@ async function loadAccessoriesFromFirebase(url, authToken = '') {
     ACCESSORIES = data;
     accQty = {}; // reset cantidades al recargar
     renderAccGrid();
-    console.log(`✅ ${data.length} accesorios cargados desde Firebase`);
+    // console.log(`✅ ${data.length} accesorios cargados desde Firebase`);
 
   } catch(e) {
     // Silencioso — mantiene los accesorios demo ya definidos
@@ -1650,6 +1709,7 @@ async function loadFromFirebaseModal(url, node, authToken = '') {
     filteredAC = [...allAC];
     renderBrandFilterOptions();
     renderACGrid();
+    updateStep1NextButton();
 
     // También recargar accesorios desde el mismo proyecto Firebase
     loadAccessoriesFromFirebase(cleanUrl, authToken);
@@ -1709,6 +1769,7 @@ function loadDemoData() {
   filteredAC = [...allAC];
   renderBrandFilterOptions();
   renderACGrid();
+  updateStep1NextButton();
 }
 
 function renderBrandFilterOptions() {
@@ -1746,7 +1807,10 @@ function renderACGrid() {
   if (count) count.innerHTML = `<span>${filteredAC.length}</span> equipo${filteredAC.length!==1?'s':''} encontrado${filteredAC.length!==1?'s':''}`;
   grid.innerHTML = filteredAC.map((ac, idx) => {
     const origIdx = allAC.indexOf(ac);
-    const isSelected = selectedAC === origIdx;
+    const selectedItems = (ac.capacities || [])
+      .map(c => ({ btu: Number(c.btu_capacity), qty: selectedEquipments[equipKey(origIdx, Number(c.btu_capacity))] || 0, cap: c }))
+      .filter(item => item.qty > 0);
+    const isSelected = selectedItems.length > 0;
     const brand = (ac.marca || '').trim();
     const displayName = brand ? `${brand} ${ac.brand_model}` : ac.brand_model;
     const refBadge = ac.refrigerant === 'R32' ? 'badge-r32' : 'badge-r410';
@@ -1769,13 +1833,13 @@ function renderACGrid() {
       <div class="btu-label">Capacidad BTU</div>
       <div class="btu-options">
         ${ac.capacities.map(c => `
-          <button class="btu-btn ${isSelected && selectedBTU === c.btu_capacity ? 'selected' : ''}"
+          <button class="btu-btn ${(selectedEquipments[equipKey(origIdx, Number(c.btu_capacity))] || 0) > 0 ? 'selected' : ''}"
             onclick="selectAC(${origIdx}, ${c.btu_capacity}); event.stopPropagation()">
-            ${(c.btu_capacity/1000).toFixed(0)}K
+            ${(c.btu_capacity/1000).toFixed(0)}K${(selectedEquipments[equipKey(origIdx, Number(c.btu_capacity))] || 0) > 0 ? ` x${selectedEquipments[equipKey(origIdx, Number(c.btu_capacity))] || 0}` : ''}
           </button>
         `).join('')}
       </div>
-      ${isSelected && selectedBTU ? renderACPrice(origIdx) : ''}
+      ${isSelected ? renderACPrice(origIdx) : ''}
     </div>`;
   }).join('');
   } catch(err) {
@@ -1786,22 +1850,56 @@ function renderACGrid() {
 
 function renderACPrice(idx) {
   const ac = allAC[idx];
-  const cap = ac.capacities.find(c => c.btu_capacity === selectedBTU);
-  if (!cap) return '';
+  const selectedItems = (ac.capacities || [])
+    .map(c => ({ btu: Number(c.btu_capacity), qty: selectedEquipments[equipKey(idx, Number(c.btu_capacity))] || 0, cap: c }))
+    .filter(item => item.qty > 0);
+  if (!selectedItems.length) return '';
+
+  const detailRows = selectedItems.map(item => {
+    const subtotal = item.cap.price_with_tax * item.qty;
+    return `<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <span>${(item.btu/1000).toFixed(0)}K x ${item.qty}</span>
+      <span style="display:flex;align-items:center;gap:4px;">
+        <button class="btu-btn" style="padding:2px 7px;" onclick="changeEquipmentQty(${idx}, ${item.btu}, -1); event.stopPropagation()">-</button>
+        <button class="btu-btn" style="padding:2px 7px;" onclick="changeEquipmentQty(${idx}, ${item.btu}, 1); event.stopPropagation()">+</button>
+      </span>
+      <span style="font-family:'DM Mono',monospace;color:var(--accent);">$${fmtNum(subtotal)}</span>
+    </div>`;
+  }).join('');
+
+  const total = selectedItems.reduce((sum, item) => sum + item.cap.price_with_tax * item.qty, 0);
   return `
     <div class="ac-price">
-      <div class="price-net">Neto: $${fmtNum(cap.net_price)}</div>
-      <div class="price-iva">$${fmtNum(cap.price_with_tax)} <span>c/IVA</span></div>
+      <div style="width:100%;">
+        ${detailRows}
+        <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:6px;">
+          <div class="price-net">Total equipo</div>
+          <div class="price-iva">$${fmtNum(total)} <span>c/IVA</span></div>
+        </div>
+      </div>
     </div>`;
 }
 
 function selectAC(idx, btu) {
+  const key = equipKey(idx, Number(btu));
+  selectedEquipments[key] = (selectedEquipments[key] || 0) + 1;
   selectedAC = idx;
   selectedBTU = btu;
-  document.getElementById('btnStep1Next').disabled = false;
-  document.getElementById('btnStep1Next').style.opacity = '1';
+  updateStep1NextButton();
   renderACGrid();
-  showToast(`✅ ${allAC[idx].brand_model} · ${(btu/1000).toFixed(0)}K BTU`, 'success');
+  showToast(`✅ ${allAC[idx].brand_model} · ${(btu/1000).toFixed(0)}K (x${selectedEquipments[key]})`, 'success');
+}
+
+function changeEquipmentQty(idx, btu, delta) {
+  const key = equipKey(idx, Number(btu));
+  const nextQty = Math.max(0, (selectedEquipments[key] || 0) + delta);
+  if (nextQty === 0) {
+    delete selectedEquipments[key];
+  } else {
+    selectedEquipments[key] = nextQty;
+  }
+  updateStep1NextButton();
+  renderACGrid();
 }
 
 function filterAC() {
@@ -1833,28 +1931,79 @@ function filterAC() {
 function renderServiceGrid() {
   document.getElementById('serviceGrid').innerHTML = SERVICES.map(s => `
     ${(() => {
+      const qty = Math.max(0, serviceQtyMap[s.id] || 0);
       const displayPrice = s.id === 'reparacion'
         ? repairQty * repairUnitValue
-        : s.price;
+        : ((isMultiService(s.id)) ? qty * s.price : s.price);
+      const isActive = isMultiService(s.id) ? qty > 0 : selectedService === s.id;
       return `
-    <div class="service-card ${selectedService === s.id ? 'selected' : ''}" onclick="selectService('${s.id}')">
+    <div class="service-card ${isActive ? 'selected' : ''}" onclick="selectService('${s.id}')">
       <div class="service-emoji">${s.emoji}</div>
       <div class="service-name">${s.name}</div>
-      <div class="service-price">${displayPrice > 0 ? '$'+fmtNum(displayPrice) : 'Sin costo'}</div>
+      <div class="service-price">${displayPrice > 0 ? '$'+fmtNum(displayPrice) : (isMultiService(s.id) ? 'No agregado' : 'Sin costo')}</div>
     </div>
   `;
     })()}
   `).join('');
 }
 
+function isMultiService(id) {
+  return id === 'instalacion' || id === 'mantencion';
+}
+
+function updateStep2NextButton() {
+  const btn = document.getElementById('btnStep2Next');
+  if (!btn) return;
+  const hasMulti = (serviceQtyMap.instalacion || 0) > 0 || (serviceQtyMap.mantencion || 0) > 0;
+  const hasSingle = !!selectedService;
+  const enabled = hasMulti || hasSingle;
+  btn.disabled = !enabled;
+  btn.style.opacity = enabled ? '1' : '0.4';
+}
+
 function selectService(id) {
-  selectedService = id;
+  if (isMultiService(id)) {
+    serviceQtyMap[id] = Math.max(0, (serviceQtyMap[id] || 0) + 1);
+    updateMultiServiceInputs();
+    renderServiceGrid();
+    updateStep2NextButton();
+    showToast(`✅ ${id === 'instalacion' ? 'Instalaciones' : 'Mantenciones'}: ${serviceQtyMap[id]}`, 'success');
+    return;
+  }
+
+  selectedService = selectedService === id ? null : id;
   toggleRepairInputs();
   renderServiceGrid();
-  const btn = document.getElementById('btnStep2Next');
-  btn.disabled = false;
-  btn.style.opacity = '1';
+  updateStep2NextButton();
   showToast('✅ Servicio seleccionado', 'success');
+}
+
+function updateMultiServiceInputs() {
+  const instInput = document.getElementById('serviceQtyInstInput');
+  const mantInput = document.getElementById('serviceQtyMantInput');
+  if (instInput) instInput.value = Math.max(0, serviceQtyMap.instalacion || 0);
+  if (mantInput) mantInput.value = Math.max(0, serviceQtyMap.mantencion || 0);
+  updateServiceQtyPreview();
+}
+
+function updateServiceQtyPreview() {
+  const preview = document.getElementById('serviceQtyPreview');
+  const instSvc = SERVICES.find(s => s.id === 'instalacion');
+  const mantSvc = SERVICES.find(s => s.id === 'mantencion');
+  if (!preview || !instSvc || !mantSvc) return;
+  const instTotal = (serviceQtyMap.instalacion || 0) * instSvc.price;
+  const mantTotal = (serviceQtyMap.mantencion || 0) * mantSvc.price;
+  preview.textContent = `Instalación: $${fmtNum(instTotal)} · Mantención: $${fmtNum(mantTotal)}`;
+}
+
+function updateServiceQtyValue() {
+  const instInput = document.getElementById('serviceQtyInstInput');
+  const mantInput = document.getElementById('serviceQtyMantInput');
+  serviceQtyMap.instalacion = Math.max(0, parseInt((instInput && instInput.value) || '0', 10) || 0);
+  serviceQtyMap.mantencion = Math.max(0, parseInt((mantInput && mantInput.value) || '0', 10) || 0);
+  updateMultiServiceInputs();
+  renderServiceGrid();
+  updateStep2NextButton();
 }
 
 function toggleRepairInputs() {
@@ -1892,6 +2041,30 @@ function getCurrentServiceValues(svc) {
     return { qty, unitPrice, totalPrice: qty * unitPrice };
   }
   return { qty: 1, unitPrice: svc.price, totalPrice: svc.price };
+}
+
+function getSelectedServiceItems() {
+  const items = [];
+
+  ['instalacion', 'mantencion'].forEach(id => {
+    const svc = SERVICES.find(s => s.id === id);
+    const qty = Math.max(0, serviceQtyMap[id] || 0);
+    if (svc && qty > 0) {
+      items.push({ svc, qty, unitPrice: svc.price, totalPrice: qty * svc.price });
+    }
+  });
+
+  if (selectedService && !isMultiService(selectedService)) {
+    const svc = SERVICES.find(s => s.id === selectedService);
+    if (svc) {
+      const current = getCurrentServiceValues(svc);
+      if (current.totalPrice > 0 || svc.price === 0) {
+        items.push({ svc, qty: current.qty, unitPrice: current.unitPrice, totalPrice: current.totalPrice });
+      }
+    }
+  }
+
+  return items;
 }
 
 // ============================================================
@@ -1956,24 +2129,28 @@ function goToStep(n) {
     }
   }
   currentStep = n;
-  if (n === 2) renderServiceChip();
+  if (n === 2) {
+    preloadInstallationsFromEquipment();
+    renderServiceChip();
+  }
   window.scrollTo(0,0);
 }
 
 function renderServiceChip() {
   const chip = document.getElementById('acSelectionChip');
-  if (!selectedAC && selectedAC !== 0) { chip.innerHTML = ''; return; }
-  const ac = allAC[selectedAC];
-  const cap = ac.capacities.find(c => c.btu_capacity === selectedBTU);
+  const selectedItems = getSelectedEquipmentItems();
+  if (!selectedItems.length) { chip.innerHTML = ''; return; }
+  const equipCount = selectedItems.reduce((sum, item) => sum + item.qty, 0);
+  const equipTotal = selectedItems.reduce((sum, item) => sum + (item.cap.price_with_tax * item.qty), 0);
   chip.innerHTML = `
     <div class="selection-chip">
       <div class="chip-icon">❄️</div>
       <div class="chip-info">
-        <div class="chip-title">${ac.brand_model} · ${ac.type}</div>
-        <div class="chip-sub">${selectedBTU ? (selectedBTU/1000).toFixed(0)+'K BTU · ' : ''}${ac.refrigerant}</div>
+        <div class="chip-title">Equipos seleccionados: ${equipCount}</div>
+        <div class="chip-sub">${selectedItems.slice(0, 2).map(item => `${item.ac.brand_model} ${(item.btu/1000).toFixed(0)}K x${item.qty}`).join(' · ')}${selectedItems.length > 2 ? ' ...' : ''}</div>
       </div>
       <div>
-        <div class="chip-price">${cap ? '$'+fmtNum(cap.price_with_tax) : ''}</div>
+        <div class="chip-price">$${fmtNum(equipTotal)}</div>
         <button class="chip-edit-btn" onclick="goToStep(1)">Cambiar</button>
       </div>
     </div>`;
@@ -1983,10 +2160,8 @@ function renderServiceChip() {
 // BUILD SUMMARY
 // ============================================================
 function buildSummary() {
-  const ac = selectedAC !== null ? allAC[selectedAC] : null;
-  const cap = ac ? ac.capacities.find(c => c.btu_capacity === selectedBTU) : null;
-  const svc = SERVICES.find(s => s.id === selectedService);
-  const svcValues = getCurrentServiceValues(svc);
+  const selectedEquipItems = getSelectedEquipmentItems();
+  const selectedServiceItems = getSelectedServiceItems();
 
   // Quote info
   document.getElementById('sumQuoteNum').textContent = quoteNumber;
@@ -2006,24 +2181,31 @@ function buildSummary() {
   document.getElementById('sumClientAddress').textContent = `${address}${city?', '+city:''}${region?', '+region:''}`;
 
   // Equipment
-  if (ac && cap) {
-    document.getElementById('sumEquipModel').textContent = `${ac.brand_model} · ${ac.type}`;
-    document.getElementById('sumEquipBtu').textContent = `${(selectedBTU/1000).toFixed(0)}.000 BTU`;
-    document.getElementById('sumEquipRef').textContent = ac.refrigerant;
-    document.getElementById('sumEquipPrice').value = cap.price_with_tax;
+  if (selectedEquipItems.length > 0) {
+    const modelTxt = selectedEquipItems
+      .map(item => `${item.ac.brand_model} ${(item.btu/1000).toFixed(0)}K x${item.qty}`)
+      .join(' + ');
+    const btuTxt = selectedEquipItems
+      .map(item => `${(item.btu/1000).toFixed(0)}K x${item.qty}`)
+      .join(' + ');
+    const refs = [...new Set(selectedEquipItems.map(item => item.ac.refrigerant))].join(', ');
+    document.getElementById('sumEquipModel').textContent = modelTxt;
+    document.getElementById('sumEquipBtu').textContent = btuTxt;
+    document.getElementById('sumEquipRef').textContent = refs;
+    document.getElementById('sumEquipPrice').value = getEquipmentTotalPrice();
   } else {
     document.getElementById('sumEquipModel').textContent = 'Sin equipo';
     document.getElementById('sumEquipPrice').value = 0;
   }
 
   // Service
-  if (svc) {
-    let serviceLabel = svc.name;
-    if (svc.id === 'reparacion') {
-      serviceLabel = `${svc.name} (${svcValues.qty} x $${fmtNum(svcValues.unitPrice)})`;
-    }
+  if (selectedServiceItems.length > 0) {
+    const serviceLabel = selectedServiceItems
+      .map(item => `${item.svc.name} (${item.qty} x $${fmtNum(item.unitPrice)})`)
+      .join(' + ');
+    const serviceTotal = selectedServiceItems.reduce((acc, item) => acc + item.totalPrice, 0);
     document.getElementById('sumServiceName').textContent = serviceLabel;
-    document.getElementById('sumServicePrice').value = svcValues.totalPrice;
+    document.getElementById('sumServicePrice').value = serviceTotal;
     const notes = document.getElementById('serviceNotes').value;
     if (notes) {
       document.getElementById('sumNotesRow').style.display = 'flex';
@@ -2146,10 +2328,8 @@ function generatePDF() {
   y += 4;
 
   // EQUIPMENT
-  const ac = selectedAC !== null ? allAC[selectedAC] : null;
-  const cap = ac ? ac.capacities.find(c => c.btu_capacity === selectedBTU) : null;
-  const svc = SERVICES.find(s => s.id === selectedService);
-  const svcValues = getCurrentServiceValues(svc);
+  const selectedEquipItems = getSelectedEquipmentItems();
+  const selectedServiceItems = getSelectedServiceItems();
   const activeExtras = ACCESSORIES.filter(acc => (accQty[acc.id]||0) > 0);
 
   sectionHeader(doc, '  DETALLE EQUIPOS Y SERVICIOS', margin, y, pageW - margin*2);
@@ -2157,28 +2337,26 @@ function generatePDF() {
 
   const tableBody = [];
 
-  if (ac && cap) {
+  selectedEquipItems.forEach(item => {
     tableBody.push([
-      `${ac.brand_model}\n${ac.type} · ${ac.refrigerant} · Kit ${ac.installation_kit}`,
-      `${(selectedBTU/1000).toFixed(0)}.000 BTU`,
-      '1',
-      `$${fmtNum(cap.net_price)}`,
-      `$${fmtNum(cap.price_with_tax)}`
+      `${item.ac.brand_model}\n${item.ac.type} · ${item.ac.refrigerant} · Kit ${item.ac.installation_kit}`,
+      `${(item.btu/1000).toFixed(0)}.000 BTU`,
+      String(item.qty),
+      `$${fmtNum(item.cap.net_price)}`,
+      `$${fmtNum(item.cap.price_with_tax * item.qty)}`
     ]);
-  }
+  });
 
-  if (svc) {
-    const serviceDesc = svc.id === 'reparacion'
-      ? `${svc.emoji} ${svc.name}\n${svc.desc} · ${svcValues.qty} x $${fmtNum(svcValues.unitPrice)}`
-      : `${svc.emoji} ${svc.name}\n${svc.desc}`;
+  selectedServiceItems.forEach(item => {
+    const serviceDesc = `${item.svc.emoji} ${item.svc.name}\n${item.svc.desc} · ${item.qty} x $${fmtNum(item.unitPrice)}`;
     tableBody.push([
       serviceDesc,
       'Servicio',
-      String(svcValues.qty),
-      svcValues.totalPrice > 0 ? `$${fmtNum(Math.round(svcValues.totalPrice/1.19))}` : '$0',
-      svcValues.totalPrice > 0 ? `$${fmtNum(svcValues.totalPrice)}` : 'Sin costo'
+      String(item.qty),
+      item.totalPrice > 0 ? `$${fmtNum(Math.round(item.totalPrice/1.19))}` : '$0',
+      item.totalPrice > 0 ? `$${fmtNum(item.totalPrice)}` : 'Sin costo'
     ]);
-  }
+  });
 
   activeExtras.forEach(acc => {
     const q = accQty[acc.id];
@@ -2343,6 +2521,7 @@ function showToast(msg, type = 'success') {
 function resetAll() {
   selectedAC = null;
   selectedBTU = null;
+  selectedEquipments = {};
   selectedService = null;
   accQty = {};
   document.getElementById('clientName').value = '';
@@ -2354,17 +2533,21 @@ function resetAll() {
   document.getElementById('clientNotes').value = '';
   document.getElementById('serviceNotes').value = '';
   document.getElementById('discountPct').value = '';
-  document.getElementById('btnStep1Next').disabled = true;
-  document.getElementById('btnStep1Next').style.opacity = '0.4';
-  document.getElementById('btnStep2Next').disabled = true;
-  document.getElementById('btnStep2Next').style.opacity = '0.4';
+  updateStep1NextButton();
   repairQty = 1;
   repairUnitValue = 55000;
+  serviceQtyMap = { instalacion: 0, mantencion: 0 };
   const repairQtyEl = document.getElementById('repairQty');
   const repairUnitEl = document.getElementById('repairUnitValue');
+  const serviceQtyInstEl = document.getElementById('serviceQtyInstInput');
+  const serviceQtyMantEl = document.getElementById('serviceQtyMantInput');
   if (repairQtyEl) repairQtyEl.value = 1;
   if (repairUnitEl) repairUnitEl.value = 55000;
+  if (serviceQtyInstEl) serviceQtyInstEl.value = 0;
+  if (serviceQtyMantEl) serviceQtyMantEl.value = 0;
+  updateMultiServiceInputs();
   toggleRepairInputs();
+  updateStep2NextButton();
   generateQuoteNumber();
   renderACGrid();
   renderAccGrid();
