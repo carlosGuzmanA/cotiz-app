@@ -425,7 +425,7 @@ function renderACGrid() {
     const isSelected = selectedItems.length > 0;
     const brand = (ac.marca || '').trim();
     const brandLogo = renderBrandLogo(brand);
-    const displayName = brand ? `${brand} ${ac.brand_model}` : ac.brand_model;
+    const displayName = brand ? `${ac.brand_model}` : ac.brand_model;
     const refBadge = ac.refrigerant === 'R32' ? 'badge-r32' : 'badge-r410';
     const wifiLabel = ac.wifi === 'Yes' ? '📶 WiFi' : ac.wifi === 'Optional' ? '📶 WiFi opcional' : '📶 WiFi universal';
     const warYears = ac.warranty && ac.warranty.includes('3') ? '3 años' : '1 año';
