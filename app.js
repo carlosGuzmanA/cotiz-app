@@ -78,6 +78,7 @@ let selectedEquipments = {};
 let selectedService = null;
 let accQty = {};
 let currentStep = 1;
+window.currentStep = currentStep;
 let quoteNumber = '';
 let toastTimer = null;
 let repairQty = 1;
@@ -756,6 +757,7 @@ function goToStep(n) {
     }
   }
   currentStep = n;
+  window.currentStep = currentStep;
   if (n === 2) {
     preloadInstallationsFromEquipment();
     renderServiceChip();

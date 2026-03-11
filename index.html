@@ -63,6 +63,7 @@
     <div class="section-title">Selecciona equipo</div>
     <div class="section-sub">Filtra por marca, capacidad o refrigerante para encontrar el equipo ideal.</div>
 
+
     <div class="search-box">
       <span class="search-icon">🔍</span>
       <input type="text" id="searchInput" placeholder="Buscar marca o modelo…" oninput="filterAC()">
@@ -93,17 +94,15 @@
     <div class="ac-grid" id="acGrid">
       <div class="loading"><div class="spinner"></div> Cargando equipos…</div>
     </div>
-    <div class="btn-row-single">
-      <button class="btn btn-primary" onclick="goToStep(2)" id="btnStep1Next" disabled style="opacity:0.4">
-        Continuar con selección →
-      </button>
-    </div>
   </div>
 
   <!-- PAGE 2: SERVICIO -->
   <div class="page" id="page2">
     <div class="section-title">Tipo de servicio</div>
     <div class="section-sub">¿Qué tipo de trabajo se realizará?</div>
+    <div class="btn-row-top">
+      <button class="btn btn-secondary btn-back" onclick="goToStep(1)">← Atrás</button>
+    </div>
 
     <div id="acSelectionChip"></div>
 
@@ -148,18 +147,15 @@
       <div class="notes-hint">Estos datos aparecerán en la cotización.</div>
     </div>
 
-    <div class="btn-row">
-      <button class="btn btn-secondary" onclick="goToStep(1)">← Atrás</button>
-      <button class="btn btn-primary" onclick="goToStep(3)" id="btnStep2Next" disabled style="opacity:0.4">
-        Agregar extras →
-      </button>
-    </div>
   </div>
 
   <!-- PAGE 3: ACCESORIOS -->
   <div class="page" id="page3">
     <div class="section-title">Accesorios extras</div>
     <div class="section-sub">Agrega materiales adicionales a la cotización. Opcional.</div>
+    <div class="btn-row-top">
+      <button class="btn btn-secondary btn-back" onclick="goToStep(2)">← Atrás</button>
+    </div>
 
     <div class="acc-grid" id="accGrid">
       <!-- Filled by JS -->
@@ -177,18 +173,15 @@
       </div>
     </div>
 
-    <div class="btn-row">
-      <button class="btn btn-secondary" onclick="goToStep(2)">← Atrás</button>
-      <button class="btn btn-primary" onclick="goToStep(4)">
-        Datos cliente →
-      </button>
-    </div>
   </div>
 
   <!-- PAGE 4: CLIENTE -->
   <div class="page" id="page4">
     <div class="section-title">Datos del cliente</div>
     <div class="section-sub">Completa la información para generar la cotización.</div>
+    <div class="btn-row-top">
+      <button class="btn btn-secondary btn-back" onclick="goToStep(3)">← Atrás</button>
+    </div>
 
     <div class="form-group">
       <label class="form-label">Nombre completo *</label>
@@ -255,12 +248,6 @@
       <textarea class="form-textarea" id="clientNotes" placeholder="Indicaciones especiales, piso, acceso, etc."></textarea>
     </div>
 
-    <div class="btn-row">
-      <button class="btn btn-secondary" onclick="goToStep(3)">← Atrás</button>
-      <button class="btn btn-primary" onclick="buildSummary(); goToStep(5)">
-        Ver resumen →
-      </button>
-    </div>
   </div>
 
   <!-- PAGE 5: RESUMEN Y PDF -->
@@ -381,6 +368,10 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<!-- Hidden step control buttons (used by app.js to manage state) -->
+<button id="btnStep1Next" disabled style="display:none" onclick="goToStep(2)">Continuars</button>
+<button id="btnStep2Next" disabled style="display:none" onclick="goToStep(3)">Continuar</button>
+
 <!-- FIREBASE CONFIG MODAL -->
 <div class="modal-overlay" id="configModal">
   <div class="modal-sheet">
@@ -448,6 +439,69 @@
     <span class="nav-icon">📄</span>PDF
   </button>
 </div>
+
+<!-- FAB CONTINUAR -->
+<button class="fab-continue" id="fabContinue" onclick="fabContinueAction()" disabled>
+  <span class="fab-label">Continuar</span>
+  <span class="fab-arrow">→</span>
+</button>
+
+<script>
+(function() {
+  const fabActions = {
+    1: () => goToStep(2),
+    2: () => goToStep(3),
+    3: () => goToStep(4),
+    4: () => { buildSummary(); goToStep(5); }
+  };
+
+  function fabContinueAction() {
+    const action = fabActions[window.currentStep];
+    if (action) action();
+  }
+  window.fabContinueAction = fabContinueAction;
+
+  function updateFAB() {
+    const fab = document.getElementById('fabContinue');
+    if (!fab) return;
+    const step = window.currentStep || 1;
+
+    if (step === 5) {
+      fab.style.display = 'none';
+      return;
+    }
+    fab.style.display = 'flex';
+
+    // Determine enabled state
+    let enabled = true;
+    if (step === 1) {
+      const btn = document.getElementById('btnStep1Next');
+      enabled = btn ? !btn.disabled : true;
+    } else if (step === 2) {
+      const btn = document.getElementById('btnStep2Next');
+      enabled = btn ? !btn.disabled : true;
+    }
+
+    fab.disabled = !enabled;
+    fab.style.opacity = enabled ? '1' : '0.38';
+    fab.style.pointerEvents = enabled ? 'auto' : 'none';
+  }
+  window._updateFAB = updateFAB;
+
+  // Poll every 300ms to stay in sync (light, safe approach)
+  setInterval(updateFAB, 300);
+
+  document.addEventListener('DOMContentLoaded', () => {
+    updateFAB();
+    // Also watch for attribute changes on step buttons
+    ['btnStep1Next', 'btnStep2Next'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      new MutationObserver(updateFAB).observe(btn, { attributes: true });
+    });
+  });
+})();
+</script>
 
 <script src="app.js"></script>
 </body>
