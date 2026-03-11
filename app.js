@@ -893,7 +893,8 @@ async function generatePDF() {
 
   const headerH = 28;
   const headerBottomGap = 8;
-  const titleY = 13 + 7;
+  const titleY = 13 + 5;
+  const subtitleY = titleY + 3;
   const metaY1 = 10;
   const metaY2 = 15;
   const metaY3 = 20;
@@ -905,7 +906,7 @@ async function generatePDF() {
 
   const logoSize = 20;
   const logoX = 18;
-  const logoY = ((titleY + 15) / 2) - (logoSize / 2);
+  const logoY = ((titleY + 13) / 2) - (logoSize / 2);
 
   let titleX = 14;
   const logoSource = await getPdfLogoSource();
@@ -917,12 +918,12 @@ async function generatePDF() {
   doc.setTextColor(33, 37, 41);
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text('RefriPro', titleX, titleY);
+  doc.text('RefriPro Climatización', titleX, titleY);
 
   doc.setTextColor(92, 99, 112);
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  // doc.text('Sistema profesional de cotización HVAC', titleX, subtitleY);
+  doc.text('"Controlamos el Clima"', titleX, subtitleY);
 
   doc.setTextColor(106, 112, 124);
   doc.setFontSize(7.5);
