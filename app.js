@@ -58,13 +58,25 @@ const SERVICE_PDF_CONTENT = {
 
 // ============================================================
 // FIREBASE REALTIME DATABASE CONFIG
-// ▶ Pega aqui tu conexion principal (opcional).
-// Si dejas databaseURL vacio, la app usara lo guardado en el modal.
+// Configuracion fija en codigo.
+// Si dejas databaseURL vacio o la conexion falla, la app usa datos demo.
 // ============================================================
 const FIREBASE_CONNECTION = {
   databaseURL: 'https://cotizaciones-app-ece65-default-rtdb.firebaseio.com/', // Ejemplo: 'https://mi-proyecto-default-rtdb.firebaseio.com'
   node: 'air_conditioners', // Nodo donde vive el array de equipos
   authToken: '' // Opcional: token/secret si tus reglas requieren auth para leer
+};
+
+const BRAND_ICON_DIR = 'assets/img';
+const BRAND_ICON_EXTENSIONS = ['svg', 'png', 'webp', 'jpg', 'jpeg'];
+const BRAND_ICON_OVERRIDES = {
+  daitsu: ['daitsu'],
+  ika: ['ika'],
+  kendal: ['kendal'],
+  lg: ['lg'],
+  midea: ['midea'],
+  tcl: ['tcl'],
+  clark: ['clark']
 };
 
 // ============================================================
@@ -139,11 +151,10 @@ function init() {
   try { updateMultiServiceInputs(); } catch(e) {}
   try { updateStep2NextButton(); } catch(e) {}
 
-  // Priorizar Firebase al iniciar. Si no hay config o falla, usar demo.
-  const savedCfg = getSavedFirebaseConfig();
-  const activeUrl = FIREBASE_CONNECTION.databaseURL || savedCfg.databaseURL;
-  const activeNode = FIREBASE_CONNECTION.node || savedCfg.node || 'air_conditioners';
-  const activeToken = FIREBASE_CONNECTION.authToken || savedCfg.authToken || '';
+  // Priorizar Firebase fijo en codigo. Si no hay config o falla, usar demo.
+  const activeUrl = FIREBASE_CONNECTION.databaseURL;
+  const activeNode = FIREBASE_CONNECTION.node || 'air_conditioners';
+  const activeToken = FIREBASE_CONNECTION.authToken || '';
 
   if (activeUrl) {
     // Carga equipos y accesorios en paralelo desde Firebase
@@ -266,21 +277,6 @@ function normalizeFirebaseArrays(obj) {
   return obj;
 }
 
-// ============================================================
-// PERSISTENCIA DE CONFIG EN LOCALSTORAGE
-// ============================================================
-function getSavedFirebaseConfig() {
-  try {
-    return {
-      databaseURL: localStorage.getItem('fb_rtdb_url') || '',
-      node: localStorage.getItem('fb_rtdb_node') || 'air_conditioners',
-      authToken: localStorage.getItem('fb_rtdb_token') || ''
-    };
-  } catch(e) {
-    return { databaseURL: '', node: 'air_conditioners', authToken: '' };
-  }
-}
-
 function buildFirebaseEndpoint(url, node, authToken = '') {
   const cleanUrl = (url || '').trim().replace(/\/$/, '');
   const safeNode = (node || 'air_conditioners').replace(/^\/+|\/+$/g, '');
@@ -300,69 +296,6 @@ function buildFirebaseEndpoint(url, node, authToken = '') {
   }
 
   return endpoint;
-}
-
-function saveFirebaseConfig() {
-  const urlInput = document.getElementById('cfgFirebaseUrl').value.trim();
-  const nodeInput = document.getElementById('cfgNode').value.trim() || 'air_conditioners';
-  const tokenInput = document.getElementById('cfgToken').value.trim();
-
-  if (!urlInput || !urlInput.startsWith('https://')) {
-    showCfgStatus('error', '⚠️ La URL debe comenzar con https://');
-    return;
-  }
-
-  try { localStorage.setItem('fb_rtdb_url', urlInput); } catch(e) {}
-  try { localStorage.setItem('fb_rtdb_node', nodeInput); } catch(e) {}
-  try { localStorage.setItem('fb_rtdb_token', tokenInput); } catch(e) {}
-
-  showCfgStatus('loading', '🔄 Conectando con Firebase…');
-  loadFromFirebaseModal(urlInput, nodeInput, tokenInput);
-}
-
-async function loadFromFirebaseModal(url, node, authToken = '') {
-  const cleanUrl = url.replace(/\/$/, '');
-  const endpoint = buildFirebaseEndpoint(cleanUrl, node, authToken);
-
-  try {
-    const res = await fetch(endpoint);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const raw = await res.json();
-    if (!raw) throw new Error('Nodo vacío');
-
-    const data = normalizeFirebaseArrays(raw);
-    if (!Array.isArray(data) || data.length === 0) throw new Error('Sin equipos en ese nodo');
-
-    allAC = data;
-    filteredAC = [...allAC];
-    renderBrandFilterOptions();
-    renderACGrid();
-    updateStep1NextButton();
-
-    // También recargar accesorios desde el mismo proyecto Firebase
-    loadAccessoriesFromFirebase(cleanUrl, authToken);
-
-    showCfgStatus('ok', `✅ Conectado — ${data.length} equipos cargados`);
-    showToast(`✅ Firebase conectado · ${data.length} equipos`, 'success');
-
-    setTimeout(() => closeConfigModal(), 1800);
-
-  } catch(e) {
-    showCfgStatus('error', `❌ Error: ${e.message}`);
-  }
-}
-
-function showCfgStatus(type, msg) {
-  const el = document.getElementById('cfgStatus');
-  if (!el) return;
-  el.style.display = 'block';
-  el.textContent = msg;
-  const styles = {
-    ok:      'background:rgba(45,90,61,0.1); border:1px solid rgba(45,90,61,0.3); color:#2d5a3d;',
-    error:   'background:rgba(139,46,15,0.1); border:1px solid rgba(139,46,15,0.3); color:#8b2e0f;',
-    loading: 'background:rgba(26,58,92,0.08); border:1px solid rgba(26,58,92,0.2); color:#1a3a5c;',
-  };
-  el.style.cssText += styles[type] || styles.loading;
 }
 
 function showFirebaseStatus(type, msg) {
@@ -419,6 +352,55 @@ function renderBrandFilterOptions() {
   }
 }
 
+function normalizeBrandKey(brand) {
+  return (brand || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function getBrandIconCandidates(brand) {
+  const normalized = normalizeBrandKey(brand);
+  if (!normalized) return [];
+
+  const baseNames = BRAND_ICON_OVERRIDES[normalized] || [normalized];
+  const files = [];
+
+  baseNames.forEach(base => {
+    BRAND_ICON_EXTENSIONS.forEach(ext => {
+      files.push(`${BRAND_ICON_DIR}/${base}.${ext}`);
+    });
+  });
+
+  return [...new Set(files)];
+}
+
+function renderBrandLogo(brand) {
+  const candidates = getBrandIconCandidates(brand);
+  if (!candidates.length) return '';
+
+  return `<img class="ac-brand-logo" src="${candidates[0]}" alt="${brand || 'Marca'}" loading="lazy" data-candidates="${candidates.join('|')}" data-candidate-index="0" onerror="handleBrandIconError(this)">`;
+}
+
+function handleBrandIconError(img) {
+  if (!img) return;
+
+  const candidates = (img.dataset.candidates || '').split('|').filter(Boolean);
+  const currentIndex = Number(img.dataset.candidateIndex || '0');
+  const nextIndex = currentIndex + 1;
+
+  if (nextIndex >= candidates.length) {
+    img.style.display = 'none';
+    return;
+  }
+
+  img.dataset.candidateIndex = String(nextIndex);
+  img.src = candidates[nextIndex];
+}
+window.handleBrandIconError = handleBrandIconError;
+
 // ============================================================
 // RENDER AC GRID
 // ============================================================
@@ -440,6 +422,7 @@ function renderACGrid() {
       .filter(item => item.qty > 0);
     const isSelected = selectedItems.length > 0;
     const brand = (ac.marca || '').trim();
+    const brandLogo = renderBrandLogo(brand);
     const displayName = brand ? `${brand} ${ac.brand_model}` : ac.brand_model;
     const refBadge = ac.refrigerant === 'R32' ? 'badge-r32' : 'badge-r410';
     const wifiLabel = ac.wifi === 'Yes' ? '📶 WiFi' : ac.wifi === 'Optional' ? '📶 WiFi opcional' : '📶 WiFi universal';
@@ -448,6 +431,9 @@ function renderACGrid() {
     <div class="ac-card ${isSelected ? 'selected' : ''}" id="accard-${origIdx}">
       <div class="ac-header">
         <div>
+          <div class="ac-brand-row">
+            ${brandLogo}
+          </div>
           <div class="ac-brand">${displayName}</div>
           <div class="ac-type">${ac.type}</div>
         </div>
@@ -1315,28 +1301,3 @@ function resetAll() {
   goToStep(1);
   showToast('🔄 Nueva cotización iniciada', 'success');
 }
-
-function closeConfigModal() {
-  document.getElementById('configModal').classList.remove('open');
-}
-
-// ⚙️ Doble click en logo abre configuración Firebase
-document.querySelector('.logo-icon').addEventListener('dblclick', () => {
-  // Pre-llenar con URL guardada si existe
-  try {
-    const savedCfg = getSavedFirebaseConfig();
-    const urlInput = document.getElementById('cfgFirebaseUrl');
-    const nodeInput = document.getElementById('cfgNode');
-    const tokenInput = document.getElementById('cfgToken');
-    if (urlInput && savedCfg.databaseURL) urlInput.value = savedCfg.databaseURL;
-    if (nodeInput) nodeInput.value = savedCfg.node;
-    if (tokenInput) tokenInput.value = savedCfg.authToken;
-  } catch(e) {}
-  // Limpiar estado anterior
-  const status = document.getElementById('cfgStatus');
-  if (status) status.style.display = 'none';
-  document.getElementById('configModal').classList.add('open');
-});
-document.getElementById('configModal').addEventListener('click', function(e) {
-  if (e.target === this) closeConfigModal();
-});

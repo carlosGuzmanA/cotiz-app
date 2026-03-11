@@ -278,6 +278,20 @@
     align-items: flex-start;
     margin-bottom: 10px;
   }
+  .ac-brand-row {
+    display: flex;
+    align-items: center;
+    min-height: 20px;
+    margin-bottom: 4px;
+  }
+  .ac-brand-logo {
+    max-height: 18px;
+    max-width: 90px;
+    width: auto;
+    object-fit: contain;
+    display: block;
+    opacity: 0.92;
+  }
   .ac-brand {
     font-family: 'Cormorant Garamond', serif;
     font-size: 18px;

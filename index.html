@@ -372,55 +372,6 @@
 <button id="btnStep1Next" disabled style="display:none" onclick="goToStep(2)">Continuars</button>
 <button id="btnStep2Next" disabled style="display:none" onclick="goToStep(3)">Continuar</button>
 
-<!-- FIREBASE CONFIG MODAL -->
-<div class="modal-overlay" id="configModal">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <div class="modal-title">⚙️ Conectar Firebase</div>
-    <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px; line-height:1.6; font-style:italic;">
-      Ingresa la URL de tu Firebase Realtime Database. La encuentras en la consola de Firebase bajo
-      <strong style="font-style:normal; color:var(--accent)">Build → Realtime Database</strong>.
-    </p>
-
-    <!-- Instrucción visual -->
-    <div style="background:rgba(26,58,92,0.06); border:1px solid rgba(26,58,92,0.15); border-radius:4px; padding:12px 14px; margin-bottom:16px;">
-      <div style="font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;">Tu URL tiene este formato</div>
-      <div style="font-size:12px; font-family:'DM Mono',monospace; color:var(--accent); word-break:break-all;">https://<em style="color:var(--text-muted)">tu-proyecto</em>-default-rtdb.firebaseio.com</div>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">URL de Realtime Database</label>
-      <input type="text" class="form-input" id="cfgFirebaseUrl"
-        placeholder="https://tu-proyecto-default-rtdb.firebaseio.com">
-      <div class="notes-hint" style="margin-top:6px">Sin barra al final. Solo se requiere lectura pública.</div>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Nodo raíz (opcional)</label>
-      <input type="text" class="form-input" id="cfgNode"
-        placeholder="air_conditioners" value="air_conditioners">
-      <div class="notes-hint" style="margin-top:6px">Nombre del array en tu JSON de Firebase.</div>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Token/Secret (opcional)</label>
-      <input type="password" class="form-input" id="cfgToken"
-        placeholder="Solo si tus reglas de lectura lo exigen">
-      <div class="notes-hint" style="margin-top:6px">Si tu base tiene lectura publica, dejalo vacio.</div>
-    </div>
-
-    <button class="btn btn-primary" onclick="saveFirebaseConfig()" style="margin-top:8px">
-      🔗 Guardar y conectar
-    </button>
-    <button class="btn btn-secondary" onclick="closeConfigModal(); loadDemoData()" style="margin-top:8px">
-      Continuar con datos demo
-    </button>
-
-    <!-- Estado de conexión -->
-    <div id="cfgStatus" style="display:none; margin-top:12px; padding:10px 14px; border-radius:4px; font-size:12px; font-weight:700; letter-spacing:0.5px;"></div>
-  </div>
-</div>
-
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <button class="nav-item active" id="nav1" onclick="goToStep(1)">
