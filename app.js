@@ -988,7 +988,7 @@ async function generatePDF() {
   });
 
   selectedServiceItems.forEach(item => {
-    const serviceDesc = `${item.svc.emoji} ${item.svc.name}\n${item.svc.desc} · ${item.qty} x $${fmtNum(item.unitPrice)}`;
+    const serviceDesc = `${item.svc.name}\n${item.svc.desc} · ${item.qty} x $${fmtNum(item.unitPrice)}`;
     tableBody.push([
       serviceDesc,
       'Servicio',
@@ -1001,7 +1001,7 @@ async function generatePDF() {
   activeExtras.forEach(acc => {
     const q = accQty[acc.id];
     tableBody.push([
-      `${acc.icon} ${acc.name}\n${acc.desc}`,
+      `${acc.name}\n${acc.desc}`,
       'Accesorio',
       String(q),
       `$${fmtNum(acc.price)}`,
