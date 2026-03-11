@@ -381,7 +381,9 @@ function renderBrandLogo(brand) {
   const candidates = getBrandIconCandidates(brand);
   if (!candidates.length) return '';
 
-  return `<img class="ac-brand-logo" src="${candidates[0]}" alt="${brand || 'Marca'}" loading="lazy" data-candidates="${candidates.join('|')}" data-candidate-index="0" onerror="handleBrandIconError(this)">`;
+  const brandKey = normalizeBrandKey(brand);
+
+  return `<img class="ac-brand-logo" src="${candidates[0]}" alt="${brand || 'Marca'}" loading="lazy" data-brand-key="${brandKey}" data-candidates="${candidates.join('|')}" data-candidate-index="0" onerror="handleBrandIconError(this)">`;
 }
 
 function handleBrandIconError(img) {

@@ -291,6 +291,11 @@
     object-fit: contain;
     display: block;
     opacity: 0.92;
+    transform-origin: left center;
+  }
+  .ac-brand-logo[data-brand-key="midea"],
+  .ac-brand-logo[data-brand-key="hisense"] {
+    transform: scale(1.3);
   }
   .ac-brand {
     font-family: 'Cormorant Garamond', serif;
