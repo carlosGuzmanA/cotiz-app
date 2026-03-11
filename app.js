@@ -1009,11 +1009,14 @@ async function generatePDF() {
     ]);
   });
 
+  const tableContentWidth = pageW - (margin * 2);
+
   doc.autoTable({
     startY: y,
     head: [['DESCRIPCIÓN', 'TIPO', 'CANT.', 'P. NETO', 'P. c/IVA']],
     body: tableBody,
     margin: { left: margin, right: margin },
+    tableWidth: tableContentWidth,
     styles: { fontSize: 8, font: 'helvetica', cellPadding: 4, textColor: [61, 66, 77] },
     headStyles: {
       fillColor: [96, 102, 115],
@@ -1023,7 +1026,8 @@ async function generatePDF() {
     },
     alternateRowStyles: { fillColor: [247, 248, 250] },
     columnStyles: {
-      0: { cellWidth: 72 },
+      // 174 total = 82 + 22 + 14 + 28 + 28
+      0: { cellWidth: 82 },
       1: { cellWidth: 22, halign: 'center' },
       2: { cellWidth: 14, halign: 'center' },
       3: { cellWidth: 28, halign: 'right' },
