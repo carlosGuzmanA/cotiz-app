@@ -901,7 +901,7 @@ async function generatePDF() {
 
   doc.setFillColor(242, 244, 247);
   doc.rect(0, 0, pageW, headerH, 'F');
-  doc.setFillColor(145, 152, 164);
+  doc.setFillColor(79, 102, 132);
   doc.rect(0, 0, 4, headerH, 'F');
 
   const logoSize = 20;
@@ -1019,7 +1019,7 @@ async function generatePDF() {
     tableWidth: tableContentWidth,
     styles: { fontSize: 8, font: 'helvetica', cellPadding: 4, textColor: [61, 66, 77] },
     headStyles: {
-      fillColor: [96, 102, 115],
+      fillColor: [31, 53, 82],
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 8
@@ -1066,7 +1066,7 @@ async function generatePDF() {
     y += 7;
   }
 
-  doc.setFillColor(76, 82, 94);
+  doc.setFillColor(31, 53, 82);
   doc.rect(totX, y + 12, totW, 10, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(255, 255, 255);
@@ -1111,9 +1111,9 @@ async function generatePDF() {
 
   // FOOTER
   const pageH = 297;
-  doc.setFillColor(76, 82, 94);
+  doc.setFillColor(31, 53, 82);
   doc.rect(0, pageH - 18, pageW, 18, 'F');
-  doc.setFillColor(145, 152, 164);
+  doc.setFillColor(79, 102, 132);
   doc.rect(0, pageH - 18, 4, 18, 'F');
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
@@ -1161,7 +1161,7 @@ async function getPdfLogoSource() {
 }
 
 function sectionHeader(doc, text, x, y, w) {
-  doc.setFillColor(96, 102, 115);
+  doc.setFillColor(31, 53, 82);
   doc.rect(x, y - 5, w, 8, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(8);
