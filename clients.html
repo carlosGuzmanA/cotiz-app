@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Directorio de Clientes · CotizaClima</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Lato:wght@300;400;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="quotes.css">
+</head>
+<body class="quotes-page">
+  <main class="quotes-shell">
+
+    <div class="quotes-topbar">
+      <div>
+        <h1 class="quotes-title">Clientes</h1>
+        <p class="quotes-sub">Consulta clientes guardados y sus cotizaciones asociadas.</p>
+      </div>
+      <div class="quotes-actions">
+        <button id="btnBackApp" class="quotes-btn secondary" type="button">Volver a la app</button>
+        <button id="btnBackHistory" class="quotes-btn secondary" type="button">Historial</button>
+        <button id="btnLogout" class="quotes-btn danger" type="button">Cerrar sesión</button>
+      </div>
+    </div>
+
+    <p id="sessionInfo" class="quotes-sub" style="margin-bottom:12px;">Sin sesión</p>
+
+    <div class="clients-search-bar">
+      <input id="clientsSearchInput" class="quotes-input clients-search-input" type="search"
+        placeholder="Buscar por nombre o RUT..." autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+
+    <section id="clientsListCard" class="list-card" style="display:none; margin-top:16px;">
+      <div id="clientList" class="client-list"></div>
+    </section>
+
+    <p id="clientsStatus" class="status-line"></p>
+
+  </main>
+
+  <script src="firebase-auth.js"></script>
+  <script src="quotes-repo.js"></script>
+  <script src="client-repo.js"></script>
+  <script>
+  (function() {
+    var PENDING_QUOTE_STORAGE_KEY = 'cotiz_pending_quote_v1';
+
+    function $(id) { return document.getElementById(id); }
+
+    function fmtNum(n) {
+      return Math.round(Number(n || 0)).toLocaleString('es-CL');
+    }
+
+    function showStatus(message, isError) {
+      var el = $('clientsStatus');
+      if (!el) return;
+      el.textContent = message || '';
+      el.style.color = isError ? '#8b2e0f' : '#6a655e';
+    }
+
+    function navigateToEditorWithQuote(quote) {
+      sessionStorage.setItem(PENDING_QUOTE_STORAGE_KEY, JSON.stringify({ quote: quote }));
+      window.location.href = 'index.html';
+    }
+
+    function statusLabel(status) {
+      if (status === 'issued') return 'Emitida';
+      if (status === 'draft') return 'Borrador';
+      return status || 'Borrador';
+    }
+
+    function renderQuoteRow(q) {
+      var total = (q.pricing && q.pricing.total) ? ('$' + fmtNum(q.pricing.total)) : '$0';
+      var date = q.updatedAt ? new Date(q.updatedAt).toLocaleDateString('es-CL') : '-';
+      return '<div class="quote-item">' +
+        '<div class="quote-head">' +
+          '<div>' +
+            '<div class="quote-num">' + (q.quoteNumber || q.id) + '</div>' +
+            '<div class="quote-meta">' + date + ' &middot; ' + statusLabel(q.status) + '</div>' +
+          '</div>' +
+          '<div class="quote-total">' + total + '</div>' +
+        '</div>' +
+        '<div class="quote-actions">' +
+          '<button class="quotes-btn" data-action="open" data-id="' + q.id + '">Abrir y editar</button>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function renderClientCard(client, clientQuotes) {
+      var count = clientQuotes.length;
+      var phoneHtml = client.phone ? '<span class="client-detail-item">' + client.phone + '</span>' : '';
+      var emailHtml = client.email ? '<span class="client-detail-item">' + client.email + '</span>' : '';
+      var locationHtml = client.city
+        ? '<span class="client-detail-item">' + client.city + (client.region ? ', ' + client.region : '') + '</span>'
+        : '';
+
+      var quotesHtml = count === 0
+        ? '<div class="quote-item" style="font-size:12px;color:#6a655e;text-align:center;padding:14px;">Sin cotizaciones guardadas.</div>'
+        : clientQuotes.map(renderQuoteRow).join('');
+
+      var countLabel = count === 1 ? '1 cotización' : (count + ' cotizaciones');
+
+      return '<div class="client-card" data-client-id="' + client.id + '">' +
+        '<div class="client-card-header">' +
+          '<div class="client-card-info">' +
+            '<div class="client-card-name">' + (client.name || 'Sin nombre') + '</div>' +
+            '<div class="client-card-rut">' + (client.rut || 'Sin RUT') + '</div>' +
+            '<div class="client-card-details">' + phoneHtml + emailHtml + locationHtml + '</div>' +
+          '</div>' +
+          '<button class="client-toggle-btn" data-client-id="' + client.id + '" aria-expanded="false">' +
+            '<span class="client-quote-count">' + countLabel + '</span>' +
+            '<span class="client-toggle-icon">&#9660;</span>' +
+          '</button>' +
+        '</div>' +
+        '<div class="client-quotes-list hidden" data-quotes-for="' + client.id + '">' +
+          '<div class="quote-list" style="padding:10px;">' + quotesHtml + '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    var allClients = [];
+    var quoteById = {};
+    var quotesByClientId = {};
+
+    function renderFiltered(query) {
+      var q = (query || '').trim().toLowerCase();
+      var filtered = q
+        ? allClients.filter(function(c) {
+            return (c.name || '').toLowerCase().indexOf(q) !== -1 ||
+                   (c.rut || '').toLowerCase().indexOf(q) !== -1 ||
+                   (c.rutKey || '').toLowerCase().indexOf(q) !== -1;
+          })
+        : allClients;
+
+      var container = $('clientList');
+      if (!container) return;
+
+      if (!filtered.length) {
+        container.innerHTML = '<div class="quote-item" style="font-size:13px;color:#6a655e;text-align:center;padding:16px;">' +
+          (q ? 'Sin resultados para &ldquo;' + q + '&rdquo;.' : 'No hay clientes guardados aún. Los clientes se guardan cuando guardas una cotización con RUT del cliente.') +
+          '</div>';
+        return;
+      }
+
+      container.innerHTML = filtered
+        .map(function(c) { return renderClientCard(c, quotesByClientId[c.id] || []); })
+        .join('');
+    }
+
+    async function bootstrap() {
+      if (!window.FirebaseAuthService) {
+        window.location.href = 'index.html';
+        return;
+      }
+
+      var user = window.FirebaseAuthService.getCurrentUser();
+      var idToken = await window.FirebaseAuthService.getValidIdToken().catch(function() { return null; });
+
+      if (!user || !idToken) {
+        window.location.href = 'index.html';
+        return;
+      }
+
+      $('sessionInfo').textContent = 'Sesión: ' + (user.email || user.uid);
+      showStatus('Cargando clientes...', false);
+
+      try {
+        var results = await Promise.all([
+          window.ClientRepo.listClients(user.uid, idToken),
+          window.QuotesRepo.listQuotes(user.uid, idToken)
+        ]);
+
+        var clients = results[0] || [];
+        var quotes  = results[1] || [];
+
+        // Build O(1) quote lookup
+        quoteById = {};
+        quotes.forEach(function(q) { quoteById[q.id] = q; });
+
+        // Group quotes by clientId from the client's quoteIds set
+        quotesByClientId = {};
+        clients.forEach(function(c) {
+          var ids = Object.keys(c.quoteIds || {});
+          quotesByClientId[c.id] = ids
+            .map(function(id) { return quoteById[id]; })
+            .filter(Boolean)
+            .sort(function(a, b) { return Number(b.updatedAt || 0) - Number(a.updatedAt || 0); });
+        });
+
+        allClients = clients;
+        $('clientsListCard').style.display = '';
+        showStatus('', false);
+        renderFiltered('');
+
+      } catch (e) {
+        showStatus('Error al cargar clientes: ' + (e.message || 'Error desconocido.'), true);
+      }
+    }
+
+    function onListClick(evt) {
+      // "Abrir y editar" button
+      var openBtn = evt.target.closest('button[data-action="open"]');
+      if (openBtn) {
+        var id = openBtn.dataset.id;
+        var quote = quoteById[id];
+        if (quote) {
+          navigateToEditorWithQuote(quote);
+        } else {
+          showStatus('No se encontró la cotización.', true);
+        }
+        return;
+      }
+
+      // Toggle client accordion
+      var toggleBtn = evt.target.closest('button[data-client-id]');
+      if (toggleBtn) {
+        var clientId = toggleBtn.dataset.clientId;
+        var panel = document.querySelector('[data-quotes-for="' + clientId + '"]');
+        if (panel) {
+          var isOpen = !panel.classList.contains('hidden');
+          panel.classList.toggle('hidden', isOpen);
+          var icon = toggleBtn.querySelector('.client-toggle-icon');
+          if (icon) icon.innerHTML = isOpen ? '&#9660;' : '&#9650;';
+          toggleBtn.setAttribute('aria-expanded', String(!isOpen));
+        }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      $('btnBackApp').addEventListener('click', function() {
+        window.location.href = 'index.html';
+      });
+
+      $('btnBackHistory').addEventListener('click', function() {
+        window.location.href = 'quotes.html';
+      });
+
+      $('btnLogout').addEventListener('click', function() {
+        if (window.FirebaseAuthService) window.FirebaseAuthService.signOut();
+        window.location.href = 'index.html';
+      });
+
+      $('clientsSearchInput').addEventListener('input', function() {
+        renderFiltered(this.value);
+      });
+
+      $('clientsListCard').addEventListener('click', onListClick);
+
+      bootstrap();
+    });
+  })();
+  </script>
+</body>
+</html>

@@ -147,3 +147,105 @@ body.quotes-page {
 .hidden {
   display: none !important;
 }
+
+/* ======================================================
+   CLIENTS PAGE
+   ====================================================== */
+
+.clients-search-bar {
+  margin: 16px 0 0;
+}
+
+.clients-search-input {
+  width: 100%;
+  max-width: 420px;
+  box-sizing: border-box;
+}
+
+.client-list {
+  display: grid;
+  gap: 10px;
+}
+
+.client-card {
+  border: 1px solid #d8d2c8;
+  border-radius: 4px;
+  background: #faf9f6;
+  overflow: hidden;
+}
+
+.client-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  cursor: default;
+}
+
+.client-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.client-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1612;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.client-card-rut {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: #6a655e;
+  margin-top: 2px;
+}
+
+.client-card-details {
+  margin-top: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.client-detail-item {
+  font-size: 11px;
+  color: #6a655e;
+}
+
+.client-toggle-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid #1a3a5c;
+  border-radius: 4px;
+  background: #fff;
+  color: #1a3a5c;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.client-toggle-btn:hover {
+  background: #eef2f7;
+}
+
+.client-quote-count {
+  font-size: 11px;
+}
+
+.client-toggle-icon {
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+.client-quotes-list {
+  border-top: 1px solid #e8e4de;
+  background: #f4f2ee;
+}

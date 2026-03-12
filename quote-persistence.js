@@ -57,6 +57,11 @@
       const result = await window.QuotesRepo.saveQuote(auth.user.uid, auth.idToken, payload, existingId || null);
       bridge.setActiveQuoteId(result.id);
 
+      // Sync client directory in background (fire-and-forget, must not block user flow)
+      if (window.ClientRepo && payload.client && payload.client.name) {
+        window.ClientRepo.syncClientForQuote(auth.user.uid, auth.idToken, payload.client, result.id).catch(function() {});
+      }
+
       if (!silent) {
         const label = status === 'issued' ? 'emitida' : 'guardada';
         showToastSafe(`💾 Cotización ${label} correctamente`, 'success');
@@ -155,7 +160,9 @@
     const user = auth ? auth.getCurrentUser() : null;
     const logged = !!user;
 
+    const clientsAction = $('menuOpenClients');
     if (historyAction) historyAction.disabled = !logged;
+    if (clientsAction) clientsAction.disabled = !logged;
     if (loginAction) loginAction.textContent = logged ? 'Cerrar sesión' : 'Iniciar sesión';
     if (sessionText) sessionText.textContent = logged ? `Sesión: ${user.email || user.uid}` : 'Sin sesión';
   }
@@ -241,6 +248,19 @@
           return;
         }
         openLoginModal();
+      });
+    }
+
+    const clientsAction = $('menuOpenClients');
+    if (clientsAction) {
+      clientsAction.addEventListener('click', function() {
+        closeMenu();
+        if (!isAuthenticated()) {
+          showToastSafe('Inicia sesión para ver los clientes.', 'error');
+          openLoginModal();
+          return;
+        }
+        window.location.href = 'clients.html';
       });
     }
 
