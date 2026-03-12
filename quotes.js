@@ -89,10 +89,10 @@
       </div>
       <div class="quote-client">Cliente: ${clientName}</div>
       <div class="quote-actions">
-        <button class="quotes-btn" data-action="open" data-id="${item.id}">Abrir y editar</button>
-        <button class="quotes-btn secondary" data-action="duplicate" data-id="${item.id}">Duplicar</button>
+        <button class="quotes-btn icon-btn" data-action="open" data-id="${item.id}" title="Abrir y editar"><i class="fas fa-pen-to-square"></i></button>
+        <button class="quotes-btn secondary icon-btn" data-action="duplicate" data-id="${item.id}" title="Duplicar"><i class="fas fa-copy"></i></button>
         ${callBtn}${wazeBtn}
-        <button class="quotes-btn danger" data-action="delete" data-id="${item.id}">Eliminar</button>
+        <button class="quotes-btn danger icon-btn" data-action="delete" data-id="${item.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
       </div>
     </div>`;
   }
