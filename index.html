@@ -197,7 +197,11 @@
     </div>
     <div class="form-group">
       <label class="form-label">Dirección de instalación *</label>
-      <input type="text" class="form-input" id="clientAddress" placeholder="Calle, número, comuna">
+      <div class="input-inline-action">
+        <input type="text" class="form-input" id="clientAddress" placeholder="Calle, número, comuna">
+        <button type="button" class="btn btn-secondary btn-gps" id="btnUseGpsAddress" onclick="fillAddressFromGPS()">Usar GPS</button>
+      </div>
+      <div class="notes-hint" id="gpsAddressStatus">Permite autocompletar direccion y ciudad desde tu ubicacion actual.</div>
     </div>
     <div class="form-row">
       <div class="form-group">

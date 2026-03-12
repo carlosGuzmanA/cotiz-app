@@ -407,45 +407,52 @@
 
   .ac-specs {
     display: flex;
-    gap: 6px;
+    gap: 5px;
     flex-wrap: wrap;
-    margin-bottom: 12px;
+    margin-top: 8px;
+    margin-bottom: 2px;
   }
   .spec-tag {
-    padding: 2px 8px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
     background: var(--card2);
     border-radius: 2px;
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-dim);
-    font-family: 'DM Mono', monospace;
-    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border: 1px solid var(--border);
+    opacity: 0.88;
   }
+  .spec-tag.icon-only { font-size: 11px; }
   .spec-tag.wifi { color: var(--accent); border-color: rgba(26,58,92,0.2); background: rgba(26,58,92,0.06); }
   .spec-tag.warranty { color: var(--yellow); border-color: rgba(122,92,30,0.2); background: rgba(122,92,30,0.06); }
 
   /* BTU SELECTOR */
   .btu-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 1.5px;
+    letter-spacing: 1.8px;
     text-transform: uppercase;
-    color: var(--text-muted);
-    margin-bottom: 8px;
+    color: var(--accent);
+    margin-bottom: 9px;
     font-family: 'Lato', sans-serif;
   }
   .btu-options {
     display: flex;
-    gap: 5px;
+    gap: 7px;
     flex-wrap: wrap;
+    margin-bottom: 10px;
   }
   .btu-btn {
-    padding: 5px 11px;
+    padding: 7px 12px;
     border-radius: 2px;
-    border: 1px solid var(--border);
-    background: transparent;
+    border: 1px solid rgba(26,58,92,0.3);
+    background: rgba(26,58,92,0.02);
     color: var(--text-dim);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     font-family: 'DM Mono', monospace;
@@ -453,9 +460,9 @@
     letter-spacing: 0.5px;
   }
   .btu-btn:hover {
-    border-color: var(--accent);
+    border-color: rgba(26,58,92,0.55);
     color: var(--accent);
-    background: rgba(26,58,92,0.05);
+    background: rgba(26,58,92,0.08);
   }
   .btu-btn.selected {
     border-color: var(--accent);
@@ -620,6 +627,22 @@
   .form-textarea { resize: vertical; min-height: 80px; }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .form-select-full option { background: var(--surface); }
+
+  .input-inline-action {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+  }
+  .btn-gps {
+    width: auto;
+    min-width: 98px;
+    padding: 10px 12px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    box-shadow: var(--shadow);
+    white-space: nowrap;
+  }
 
   /* SUMMARY */
   .summary-card {
@@ -1010,6 +1033,15 @@
 
   /* NOTES SECTION */
   .notes-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; font-style: italic; }
+
+  @media (max-width: 420px) {
+    .input-inline-action {
+      grid-template-columns: 1fr;
+    }
+    .btn-gps {
+      width: 100%;
+    }
+  }
 
   /* Discount line */
   .discount-line {

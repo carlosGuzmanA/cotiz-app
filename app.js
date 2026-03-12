@@ -515,8 +515,9 @@ function renderACGrid() {
     const brandLogo = renderBrandLogo(brand);
     const displayName = brand ? `${ac.brand_model}` : ac.brand_model;
     const refBadge = ac.refrigerant === 'R32' ? 'badge-r32' : 'badge-r410';
-    const wifiLabel = ac.wifi === 'Yes' ? '📶 WiFi' : ac.wifi === 'Optional' ? '📶 WiFi opcional' : '📶 WiFi universal';
-    const warYears = ac.warranty && ac.warranty.includes('3') ? '3 años' : '1 año';
+    const wifiLabel = ac.wifi === 'Yes' ? 'WiFi incluido' : ac.wifi === 'Optional' ? 'WiFi opcional' : 'WiFi universal';
+    const warYears = ac.warranty && ac.warranty.includes('3') ? 'Garantia 3 anos' : 'Garantia 1 ano';
+    const kitLabel = `Kit de instalacion ${ac.installation_kit}`;
     return `
     <div class="ac-card ${isSelected ? 'selected' : ''}" id="accard-${origIdx}">
       <div class="ac-header">
@@ -529,11 +530,6 @@ function renderACGrid() {
         </div>
         <span class="ac-badge ${refBadge}">${ac.refrigerant}</span>
       </div>
-      <div class="ac-specs">
-        <span class="spec-tag wifi">${wifiLabel}</span>
-        <span class="spec-tag warranty">🛡️ ${warYears}</span>
-        <span class="spec-tag">📦 Kit ${ac.installation_kit}</span>
-      </div>
       <div class="btu-label">Capacidad BTU</div>
       <div class="btu-options">
         ${ac.capacities.map(c => `
@@ -542,6 +538,11 @@ function renderACGrid() {
             ${(c.btu_capacity/1000).toFixed(0)}K${(selectedEquipments[equipKey(origIdx, Number(c.btu_capacity))] || 0) > 0 ? ` x${selectedEquipments[equipKey(origIdx, Number(c.btu_capacity))] || 0}` : ''}
           </button>
         `).join('')}
+      </div>
+      <div class="ac-specs" aria-label="Especificaciones">
+        <span class="spec-tag icon-only wifi" title="${wifiLabel}" aria-label="${wifiLabel}">📶</span>
+        <span class="spec-tag icon-only warranty" title="${warYears}" aria-label="${warYears}">🛡️</span>
+        <span class="spec-tag icon-only" title="${kitLabel}" aria-label="${kitLabel}">📦</span>
       </div>
       ${isSelected ? renderACPrice(origIdx) : ''}
     </div>`;
@@ -1529,6 +1530,158 @@ window.CotizPersistenceBridge = {
   getQuoteNumberValue,
   setQuoteNumberValue
 };
+
+// ============================================================
+// GPS ADDRESS AUTOFILL
+// ============================================================
+function setGpsStatus(message, isError = false) {
+  const statusEl = document.getElementById('gpsAddressStatus');
+  if (!statusEl) return;
+  statusEl.textContent = message;
+  statusEl.style.color = isError ? 'var(--red)' : 'var(--text-muted)';
+}
+
+function setGpsButtonLoading(isLoading) {
+  const btn = document.getElementById('btnUseGpsAddress');
+  if (!btn) return;
+  btn.disabled = !!isLoading;
+  btn.textContent = isLoading ? 'Buscando...' : 'Usar GPS';
+}
+
+function mapRegionFromState(stateText) {
+  const state = (stateText || '').toLowerCase();
+  if (!state) return '';
+
+  const regionAliases = {
+    'Arica y Parinacota': ['arica y parinacota'],
+    'Tarapacá': ['tarapaca'],
+    'Antofagasta': ['antofagasta'],
+    'Atacama': ['atacama'],
+    'Coquimbo': ['coquimbo'],
+    'Valparaíso': ['valparaiso'],
+    'Metropolitana': ['metropolitana', 'santiago'],
+    "O'Higgins": ["o'higgins", 'libertador bernardo ohiggins'],
+    'Maule': ['maule'],
+    'Ñuble': ['nuble'],
+    'Biobío': ['biobio'],
+    'Araucanía': ['araucania', 'la araucania'],
+    'Los Ríos': ['los rios'],
+    'Los Lagos': ['los lagos'],
+    'Aysén': ['aysen'],
+    'Magallanes': ['magallanes']
+  };
+
+  const stateNormalized = state
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  for (const [region, aliases] of Object.entries(regionAliases)) {
+    if (aliases.some(alias => stateNormalized.includes(alias))) {
+      return region;
+    }
+  }
+
+  return '';
+}
+
+function pickCityFromAddress(address) {
+  if (!address || typeof address !== 'object') return '';
+  return (
+    address.city ||
+    address.town ||
+    address.village ||
+    address.municipality ||
+    address.county ||
+    ''
+  );
+}
+
+function buildStreetAddress(address) {
+  if (!address || typeof address !== 'object') return '';
+  const road = address.road || address.pedestrian || address.footway || '';
+  const number = address.house_number || '';
+  const suburb = address.suburb || address.neighbourhood || '';
+  const main = [road, number].filter(Boolean).join(' ').trim();
+  return [main, suburb].filter(Boolean).join(', ').trim();
+}
+
+async function fillAddressFromGPS() {
+  const addressInput = document.getElementById('clientAddress');
+  const cityInput = document.getElementById('clientCity');
+  const regionSelect = document.getElementById('clientRegion');
+
+  if (!addressInput || !cityInput || !regionSelect) return;
+
+  if (!('geolocation' in navigator)) {
+    setGpsStatus('Tu navegador no soporta geolocalizacion.', true);
+    showToast('GPS no disponible en este navegador', 'error');
+    return;
+  }
+
+  setGpsButtonLoading(true);
+  setGpsStatus('Solicitando permiso de ubicacion...');
+
+  try {
+    const position = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 60000
+      });
+    });
+
+    const { latitude, longitude } = position.coords;
+    setGpsStatus('Obteniendo direccion desde coordenadas...');
+
+    const reverseUrl = `https://nominatim.openstreetmap.org/reverse?lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}&format=jsonv2&accept-language=es`;
+    const response = await fetch(reverseUrl, {
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`No se pudo resolver direccion (HTTP ${response.status})`);
+    }
+
+    const data = await response.json();
+    const address = data && data.address ? data.address : {};
+
+    const streetAddress = buildStreetAddress(address) || data.display_name || '';
+    const city = pickCityFromAddress(address);
+    const regionCandidate = mapRegionFromState(address.state || address.region || '');
+
+    if (streetAddress) addressInput.value = streetAddress;
+    if (city) cityInput.value = city;
+    if (regionCandidate) {
+      const hasOption = Array.from(regionSelect.options || []).some(opt => opt.value === regionCandidate);
+      if (hasOption) regionSelect.value = regionCandidate;
+    }
+
+    setGpsStatus('Direccion actualizada con GPS. Puedes editarla manualmente.');
+    showToast('Ubicacion cargada correctamente', 'success');
+  } catch (error) {
+    const code = error && typeof error.code === 'number' ? error.code : null;
+    let message = 'No fue posible obtener la direccion por GPS.';
+
+    if (code === 1) {
+      message = 'Permiso denegado. Debes habilitar ubicacion para usar GPS.';
+    } else if (code === 2) {
+      message = 'No se pudo determinar tu ubicacion actual.';
+    } else if (code === 3) {
+      message = 'Tiempo de espera agotado al solicitar ubicacion.';
+    } else if (error && error.message) {
+      message = error.message;
+    }
+
+    setGpsStatus(message, true);
+    showToast('No se pudo autocompletar con GPS', 'error');
+  } finally {
+    setGpsButtonLoading(false);
+  }
+}
+
+window.fillAddressFromGPS = fillAddressFromGPS;
 
 // ============================================================
 // HELPERS
