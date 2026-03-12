@@ -1101,13 +1101,15 @@
     justify-content: center;
     text-align: center;
   }
-  .wizard-nav-icon {
+  .wizard-nav-icon-svg {
     display: block;
-    font-family: 'DM Mono', monospace;
-    font-size: 18px;
-    font-weight: 700;
-    line-height: 1;
-    transform: translateY(-0.5px);
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
   }
   .wizard-nav-btn:not(:disabled):hover {
     background: #15324f;
