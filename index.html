@@ -340,9 +340,11 @@
     <!-- Discount -->
     <div class="summary-card">
       <div class="summary-title"><i class="fas fa-tag"></i> Descuento</div>
-      <div class="discount-row">
-        <input type="number" id="discountPct" placeholder="% descuento (ej: 10)" min="0" max="100" oninput="recalcTotal()">
-        <div class="discount-badge" id="discountBadgeAmt">— $0</div>
+      <div class="summary-row">
+        <div class="summary-row-label">
+          <input type="number" id="discountPct" class="discount-pct-input" placeholder="% descuento" min="0" max="100" oninput="recalcTotal()">
+        </div>
+        <div class="summary-row-val discount-badge" id="discountBadgeAmt">— $0</div>
       </div>
     </div>
 

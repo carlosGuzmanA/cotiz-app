@@ -1159,32 +1159,40 @@ async function generatePDF() {
 
   const totX = pageW - margin - 70;
   const totW = 70;
+  const rowH = 8;       // height of each text row
+  const pad  = 5;       // top padding inside the bg rect
+  const rowCount = discPct > 0 ? 2 : 1;  // subtotal [+ discount]
+  const bgH  = rowCount * rowH + pad * 2;
 
   doc.setFillColor(244, 245, 247);
-  doc.rect(totX, y, totW, discPct > 0 ? 28 : 20, 'F');
+  doc.rect(totX, y, totW, bgH, 'F');
 
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(97, 103, 115);
-  doc.text('Subtotal:', totX + 4, y + 7);
-  doc.text(`$${fmtNum(Math.round(subtotal))}`, totX + totW - 4, y + 7, { align: 'right' });
+
+  const row1Y = y + pad + rowH - 2;
+  doc.text('Subtotal:', totX + 4, row1Y);
+  doc.text(`$${fmtNum(Math.round(subtotal))}`, totX + totW - 4, row1Y, { align: 'right' });
 
   if (discPct > 0) {
-    doc.setTextColor(110, 116, 128);
-    doc.text(`Descuento (${discPct}%):`, totX + 4, y + 14);
-    doc.text(`−$${fmtNum(Math.round(discAmt))}`, totX + totW - 4, y + 14, { align: 'right' });
-    y += 7;
+    const row2Y = row1Y + rowH;
+    doc.setTextColor(139, 46, 15);
+    doc.text(`Descuento (${discPct}%):`, totX + 4, row2Y);
+    doc.text(`$${fmtNum(Math.round(discAmt))}`, totX + totW - 4, row2Y, { align: 'right' });
   }
 
+  y += bgH + 2;
+
   doc.setFillColor(31, 53, 82);
-  doc.rect(totX, y + 12, totW, 10, 'F');
+  doc.rect(totX, y, totW, 11, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
-  doc.text('TOTAL:', totX + 4, y + 19);
-  doc.text(`$${fmtNum(Math.round(total))}`, totX + totW - 4, y + 19, { align: 'right' });
+  doc.text('TOTAL:', totX + 4, y + 7.5);
+  doc.text(`$${fmtNum(Math.round(total))}`, totX + totW - 4, y + 7.5, { align: 'right' });
 
-  y += 30;
+  y += 11 + 10;
 
   // SERVICE NOTES
   const notes = document.getElementById('serviceNotes').value;
