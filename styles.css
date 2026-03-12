@@ -1097,6 +1097,9 @@
     transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s, background 0.2s;
     display: grid;
     place-items: center;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
   }
   .wizard-nav-icon {
     display: block;
