@@ -224,6 +224,7 @@
     margin-bottom: 4px;
     letter-spacing: 0.02em;
     color: var(--accent);
+    text-align: center;
   }
   .section-sub {
     font-size: 13px;
@@ -782,6 +783,10 @@
   .btn-row-top {
     margin-top: 0;
     margin-bottom: 14px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 8;
   }
   .btn-row-single-top {
     margin-top: 0;
@@ -1064,44 +1069,46 @@
   }
 
   /* PAGE TRANSITIONS */
-  .page { display: none; animation: fadeIn 0.25s ease; }
+  .page { display: none; animation: fadeIn 0.25s ease; position: relative; }
   .page.active { display: block; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-  /* FAB CONTINUAR */
-  .fab-continue {
+  /* WIZARD NAV ICONOS */
+  .wizard-nav {
     position: fixed;
     bottom: 76px;
     right: 16px;
     z-index: 150;
     display: flex;
     align-items: center;
-    gap: 5px;
-    padding: 8px 14px;
+    gap: 8px;
+  }
+  .wizard-nav-btn {
+    width: 38px;
+    height: 38px;
+    padding: 0;
     background: var(--accent);
     color: white;
     border: none;
-    border-radius: var(--radius);
+    border-radius: 999px;
     font-family: 'Lato', sans-serif;
-    font-size: 11px;
+    font-size: 16px;
     font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    line-height: 1;
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(26,58,92,0.25);
     transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s, background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
-  .fab-continue:not(:disabled):hover {
+  .wizard-nav-btn:not(:disabled):hover {
     background: #15324f;
     transform: translateY(-1px);
     box-shadow: 0 4px 14px rgba(26,58,92,0.3);
   }
-  .fab-continue:not(:disabled):active {
+  .wizard-nav-btn:not(:disabled):active {
     transform: translateY(0);
-  }
-  .fab-arrow {
-    font-size: 13px;
-    line-height: 1;
   }
 
   /* BTN BACK (solo atrás, sin el continuar en fila) */
@@ -1113,4 +1120,8 @@
   .btn-row-top {
     margin-top: 0;
     margin-bottom: 14px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 8;
   }

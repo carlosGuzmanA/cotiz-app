@@ -69,8 +69,6 @@
   <!-- PAGE 1: EQUIPO -->
   <div class="page active" id="page1">
     <div class="section-title">Selecciona equipo</div>
-    <div class="section-sub">Filtra por marca, capacidad o refrigerante para encontrar el equipo ideal.</div>
-
 
     <div class="search-box">
       <span class="search-icon">🔍</span>
@@ -107,10 +105,6 @@
   <!-- PAGE 2: SERVICIO -->
   <div class="page" id="page2">
     <div class="section-title">Tipo de servicio</div>
-    <div class="section-sub">¿Qué tipo de trabajo se realizará?</div>
-    <div class="btn-row-top">
-      <button class="btn btn-secondary btn-back" onclick="goToStep(1)">← Atrás</button>
-    </div>
 
     <div id="acSelectionChip"></div>
 
@@ -160,10 +154,6 @@
   <!-- PAGE 3: ACCESORIOS -->
   <div class="page" id="page3">
     <div class="section-title">Accesorios extras</div>
-    <div class="section-sub">Agrega materiales adicionales a la cotización. Opcional.</div>
-    <div class="btn-row-top">
-      <button class="btn btn-secondary btn-back" onclick="goToStep(2)">← Atrás</button>
-    </div>
 
     <div class="acc-grid" id="accGrid">
       <!-- Filled by JS -->
@@ -186,10 +176,6 @@
   <!-- PAGE 4: CLIENTE -->
   <div class="page" id="page4">
     <div class="section-title">Datos del cliente</div>
-    <div class="section-sub">Completa la información para generar la cotización.</div>
-    <div class="btn-row-top">
-      <button class="btn btn-secondary btn-back" onclick="goToStep(3)">← Atrás</button>
-    </div>
 
     <div class="form-group">
       <label class="form-label">Nombre completo *</label>
@@ -425,37 +411,44 @@
   </button>
 </div>
 
-<!-- FAB CONTINUAR -->
-<button class="fab-continue" id="fabContinue" onclick="fabContinueAction()" disabled>
-  <span class="fab-label">Continuar</span>
-  <span class="fab-arrow">→</span>
-</button>
+<!-- WIZARD NAV -->
+<div class="wizard-nav" id="wizardNav">
+  <button class="wizard-nav-btn" id="btnWizardPrev" type="button" onclick="wizardPrevAction()" aria-label="Atrás" title="Atrás">←</button>
+  <button class="wizard-nav-btn" id="btnWizardNext" type="button" onclick="wizardNextAction()" aria-label="Continuar" title="Continuar" disabled>→</button>
+</div>
 
 <script>
 (function() {
-  const fabActions = {
-    1: () => goToStep(2),
-    2: () => goToStep(3),
-    3: () => goToStep(4),
-    4: () => { buildSummary(); goToStep(5); }
-  };
-
-  function fabContinueAction() {
-    const action = fabActions[window.currentStep];
-    if (action) action();
+  function wizardPrevAction() {
+    const step = window.currentStep || 1;
+    if (step > 1) goToStep(step - 1);
   }
-  window.fabContinueAction = fabContinueAction;
 
-  function updateFAB() {
-    const fab = document.getElementById('fabContinue');
-    if (!fab) return;
+  function wizardNextAction() {
+    const step = window.currentStep || 1;
+    if (step === 1) return goToStep(2);
+    if (step === 2) return goToStep(3);
+    if (step === 3) return goToStep(4);
+    if (step === 4) {
+      buildSummary();
+      return goToStep(5);
+    }
+  }
+
+  window.wizardPrevAction = wizardPrevAction;
+  window.wizardNextAction = wizardNextAction;
+
+  function updateWizardNav() {
+    const nav = document.getElementById('wizardNav');
+    const prevBtn = document.getElementById('btnWizardPrev');
+    const nextBtn = document.getElementById('btnWizardNext');
+    if (!nav || !prevBtn || !nextBtn) return;
     const step = window.currentStep || 1;
 
-    if (step === 5) {
-      fab.style.display = 'none';
-      return;
-    }
-    fab.style.display = 'flex';
+    nav.style.display = 'flex';
+
+    prevBtn.style.display = step > 1 ? 'inline-flex' : 'none';
+    nextBtn.style.display = step < 5 ? 'inline-flex' : 'none';
 
     // Determine enabled state
     let enabled = true;
@@ -467,22 +460,22 @@
       enabled = btn ? !btn.disabled : true;
     }
 
-    fab.disabled = !enabled;
-    fab.style.opacity = enabled ? '1' : '0.38';
-    fab.style.pointerEvents = enabled ? 'auto' : 'none';
+    nextBtn.disabled = !enabled;
+    nextBtn.style.opacity = enabled ? '1' : '0.38';
+    nextBtn.style.pointerEvents = enabled ? 'auto' : 'none';
   }
-  window._updateFAB = updateFAB;
+  window._updateFAB = updateWizardNav;
 
   // Poll every 300ms to stay in sync (light, safe approach)
-  setInterval(updateFAB, 300);
+  setInterval(updateWizardNav, 300);
 
   document.addEventListener('DOMContentLoaded', () => {
-    updateFAB();
+    updateWizardNav();
     // Also watch for attribute changes on step buttons
     ['btnStep1Next', 'btnStep2Next'].forEach(id => {
       const btn = document.getElementById(id);
       if (!btn) return;
-      new MutationObserver(updateFAB).observe(btn, { attributes: true });
+      new MutationObserver(updateWizardNav).observe(btn, { attributes: true });
     });
   });
 })();
