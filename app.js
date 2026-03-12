@@ -1599,10 +1599,45 @@ function pickCityFromAddress(address) {
 function buildStreetAddress(address) {
   if (!address || typeof address !== 'object') return '';
   const road = address.road || address.pedestrian || address.footway || '';
-  const number = address.house_number || '';
+  const number = address.house_number || address.housenumber || '';
   const suburb = address.suburb || address.neighbourhood || '';
   const main = [road, number].filter(Boolean).join(' ').trim();
   return [main, suburb].filter(Boolean).join(', ').trim();
+}
+
+function extractHouseNumberFromDisplayName(displayName) {
+  const text = (displayName || '').trim();
+  if (!text) return '';
+
+  // Busca patrones comunes: "Pasaje X 123", "..., 123, ...", "1234A"
+  const patterns = [
+    /(?:^|\s)(\d{1,6}[A-Za-z]?)(?=\s*,|\s|$)/,
+    /,\s*(\d{1,6}[A-Za-z]?)\s*,/
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) return match[1];
+  }
+
+  return '';
+}
+
+function buildStreetAddressWithFallback(address, displayName) {
+  const base = buildStreetAddress(address);
+  if (base) return { value: base, hasNumber: /\d/.test(base) };
+
+  const road = (address && (address.road || address.pedestrian || address.footway)) || '';
+  const suburb = (address && (address.suburb || address.neighbourhood)) || '';
+  const number = extractHouseNumberFromDisplayName(displayName);
+
+  const main = [road, number].filter(Boolean).join(' ').trim();
+  const full = [main, suburb].filter(Boolean).join(', ').trim();
+
+  if (full) return { value: full, hasNumber: /\d/.test(full) };
+
+  const display = (displayName || '').trim();
+  return { value: display, hasNumber: /\d/.test(display) };
 }
 
 async function fillAddressFromGPS() {
@@ -1633,7 +1668,7 @@ async function fillAddressFromGPS() {
     const { latitude, longitude } = position.coords;
     setGpsStatus('Obteniendo direccion desde coordenadas...');
 
-    const reverseUrl = `https://nominatim.openstreetmap.org/reverse?lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}&format=jsonv2&accept-language=es`;
+    const reverseUrl = `https://nominatim.openstreetmap.org/reverse?lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}&format=jsonv2&accept-language=es&addressdetails=1&zoom=18`;
     const response = await fetch(reverseUrl, {
       headers: {
         'Accept': 'application/json'
@@ -1647,7 +1682,8 @@ async function fillAddressFromGPS() {
     const data = await response.json();
     const address = data && data.address ? data.address : {};
 
-    const streetAddress = buildStreetAddress(address) || data.display_name || '';
+    const streetResult = buildStreetAddressWithFallback(address, data.display_name || '');
+    const streetAddress = streetResult.value;
     const city = pickCityFromAddress(address);
     const regionCandidate = mapRegionFromState(address.state || address.region || '');
 
@@ -1658,7 +1694,11 @@ async function fillAddressFromGPS() {
       if (hasOption) regionSelect.value = regionCandidate;
     }
 
-    setGpsStatus('Direccion actualizada con GPS. Puedes editarla manualmente.');
+    if (!streetResult.hasNumber) {
+      setGpsStatus('Direccion aproximada encontrada (sin numero exacto). Puedes completar el numero manualmente.', true);
+    } else {
+      setGpsStatus('Direccion actualizada con GPS. Puedes editarla manualmente.');
+    }
     showToast('Ubicacion cargada correctamente', 'success');
   } catch (error) {
     const code = error && typeof error.code === 'number' ? error.code : null;
