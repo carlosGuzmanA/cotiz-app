@@ -249,3 +249,30 @@ body.quotes-page {
   border-top: 1px solid #e8e4de;
   background: #f4f2ee;
 }
+
+.client-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.client-action-btn {
+  font-size: 11px;
+  padding: 6px 10px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Icon-only buttons */
+.icon-btn {
+  padding: 7px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 13px;
+  min-width: 32px;
+}

@@ -292,7 +292,8 @@
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-muted);
-    font-size: 15px;
+    font-size: 13px;
+    pointer-events: none;
   }
 
   /* FILTERS ROW */
@@ -426,7 +427,7 @@
     border: 1px solid var(--border);
     opacity: 0.88;
   }
-  .spec-tag.icon-only { font-size: 11px; }
+  .spec-tag.icon-only { font-size: 10px; }
   .spec-tag.wifi { color: var(--accent); border-color: rgba(26,58,92,0.2); background: rgba(26,58,92,0.06); }
   .spec-tag.warranty { color: var(--yellow); border-color: rgba(122,92,30,0.2); background: rgba(122,92,30,0.06); }
 
@@ -590,7 +591,7 @@
     box-shadow: 0 2px 10px rgba(26,58,92,0.12);
   }
   .service-card:hover { border-color: rgba(26,58,92,0.4); }
-  .service-emoji { font-size: 26px; margin-bottom: 8px; }
+  .service-icon { font-size: 22px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; color: var(--accent); }
   .service-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.01em; color: var(--text); }
   .service-price { font-size: 12px; color: var(--accent); font-family: 'DM Mono', monospace; font-weight: 700; }
 
@@ -849,7 +850,7 @@
     align-items: center;
     gap: 12px;
   }
-  .chip-icon { font-size: 22px; flex-shrink: 0; }
+  .chip-icon { font-size: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--accent); width: 28px; }
   .chip-info { flex: 1; min-width: 0; }
   .chip-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; color: var(--accent); }
   .chip-sub { font-size: 11px; color: var(--text-muted); font-style: italic; }
@@ -883,7 +884,7 @@
     padding: 40px 20px;
     color: var(--text-muted);
   }
-  .empty-state .empty-icon { font-size: 44px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.35; display: flex; align-items: center; justify-content: center; }
   .empty-state p { font-size: 14px; font-style: italic; }
 
   /* TOAST */
@@ -948,7 +949,7 @@
     font-family: 'Lato', sans-serif;
   }
   .nav-item.active { color: var(--accent); }
-  .nav-icon { font-size: 19px; }
+  .nav-icon { font-size: 16px; display: flex; align-items: center; justify-content: center; }
 
   /* PAGE TRANSITIONS - handled above */
 

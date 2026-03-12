@@ -64,7 +64,7 @@
 
       if (!silent) {
         const label = status === 'issued' ? 'emitida' : 'guardada';
-        showToastSafe(`💾 Cotización ${label} correctamente`, 'success');
+        showToastSafe(`Cotización ${label} correctamente`, 'success');
       }
 
       return result;

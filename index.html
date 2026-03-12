@@ -10,13 +10,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
 
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
 
 <!-- HEADER -->
 <div class="app-header">
   <div class="logo">
-    <div class="logo-icon">❄️</div>
+    <div class="logo-icon"><i class="fas fa-snowflake"></i></div>
     <div class="logo-text">Cotiza<span>Clima</span></div>
   </div>
   <div class="header-actions">
@@ -72,7 +73,7 @@
     <div class="section-title">Selecciona equipo</div>
 
     <div class="search-box">
-      <span class="search-icon">🔍</span>
+      <span class="search-icon"><i class="fas fa-magnifying-glass"></i></span>
       <input type="text" id="searchInput" placeholder="Buscar marca o modelo…" oninput="filterAC()">
     </div>
 
@@ -163,7 +164,7 @@
     <div class="divider"></div>
     <div id="accSummaryChip" style="display:none">
       <div class="selection-chip" style="border-color: rgba(255,107,53,0.3); background: rgba(255,107,53,0.05);">
-        <div class="chip-icon">🛒</div>
+        <div class="chip-icon"><i class="fas fa-cart-shopping"></i></div>
         <div class="chip-info">
           <div class="chip-title">Extras seleccionados</div>
           <div class="chip-sub" id="accSummaryText"></div>
@@ -256,7 +257,7 @@
 
     <!-- Quote meta -->
     <div class="summary-card">
-      <div class="summary-title">📋 Información cotización</div>
+      <div class="summary-title"><i class="fas fa-file-lines"></i> Información cotización</div>
       <div class="summary-row">
         <div class="summary-row-label">N° Cotización</div>
         <div class="summary-row-val" id="sumQuoteNum"></div>
@@ -273,7 +274,7 @@
 
     <!-- Client -->
     <div class="summary-card">
-      <div class="summary-title">👤 Cliente</div>
+      <div class="summary-title"><i class="fas fa-user"></i> Cliente</div>
       <div class="summary-row">
         <div class="summary-row-label">Nombre</div>
         <div class="summary-row-val" id="sumClientName"></div>
@@ -294,7 +295,7 @@
 
     <!-- Equipment -->
     <div class="summary-card">
-      <div class="summary-title">❄️ Equipo</div>
+      <div class="summary-title"><i class="fas fa-snowflake"></i> Equipo</div>
       <div class="summary-row">
         <div class="summary-row-label">Modelo</div>
         <div class="summary-row-val" id="sumEquipModel"></div>
@@ -315,7 +316,7 @@
 
     <!-- Service -->
     <div class="summary-card">
-      <div class="summary-title">🔧 Servicio</div>
+      <div class="summary-title"><i class="fas fa-wrench"></i> Servicio</div>
       <div class="summary-row">
         <div class="summary-row-label">Tipo</div>
         <div class="summary-row-val" id="sumServiceName"></div>
@@ -332,13 +333,13 @@
 
     <!-- Extras -->
     <div class="summary-card" id="sumExtrasCard" style="display:none">
-      <div class="summary-title">🛒 Accesorios extras</div>
+      <div class="summary-title"><i class="fas fa-cart-shopping"></i> Accesorios extras</div>
       <div id="sumExtrasList"></div>
     </div>
 
     <!-- Discount -->
     <div class="summary-card">
-      <div class="summary-title">🏷️ Descuento</div>
+      <div class="summary-title"><i class="fas fa-tag"></i> Descuento</div>
       <div class="discount-row">
         <input type="number" id="discountPct" placeholder="% descuento (ej: 10)" min="0" max="100" oninput="recalcTotal()">
         <div class="discount-badge" id="discountBadgeAmt">— $0</div>
@@ -353,13 +354,13 @@
 
     <div class="btn-row-single" style="margin-top:16px">
       <button class="btn btn-pdf" onclick="generatePDF()">
-        📄 Generar PDF · Descargar
+        <i class="fas fa-file-pdf"></i> Generar PDF · Descargar
       </button>
     </div>
     <div class="btn-row" style="margin-top:10px">
       <button class="btn btn-secondary" onclick="goToStep(4)">← Editar datos</button>
-      <button class="btn btn-secondary" onclick="saveDraftQuote()">💾 Guardar borrador</button>
-      <button class="btn btn-danger" onclick="resetAll()">🔄 Nueva cotiz.</button>
+      <button class="btn btn-secondary" onclick="saveDraftQuote()"><i class="fas fa-floppy-disk"></i> Guardar borrador</button>
+      <button class="btn btn-danger" onclick="resetAll()"><i class="fas fa-rotate-right"></i> Nueva cotiz.</button>
     </div>
   </div>
 
@@ -400,19 +401,19 @@
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <button class="nav-item active" id="nav1" onclick="goToStep(1)">
-    <span class="nav-icon">❄️</span>Equipo
+    <span class="nav-icon"><i class="fas fa-snowflake"></i></span>Equipo
   </button>
   <button class="nav-item" id="nav2" onclick="goToStep(2)">
-    <span class="nav-icon">🔧</span>Servicio
+    <span class="nav-icon"><i class="fas fa-wrench"></i></span>Servicio
   </button>
   <button class="nav-item" id="nav3" onclick="goToStep(3)">
-    <span class="nav-icon">🛒</span>Extras
+    <span class="nav-icon"><i class="fas fa-cart-shopping"></i></span>Extras
   </button>
   <button class="nav-item" id="nav4" onclick="goToStep(4)">
-    <span class="nav-icon">👤</span>Cliente
+    <span class="nav-icon"><i class="fas fa-user"></i></span>Cliente
   </button>
   <button class="nav-item" id="nav5" onclick="goToStep(5)">
-    <span class="nav-icon">📄</span>PDF
+    <span class="nav-icon"><i class="fas fa-file-pdf"></i></span>PDF
   </button>
 </div>
 

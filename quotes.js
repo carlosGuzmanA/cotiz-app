@@ -57,11 +57,27 @@
     showStatus('Sesión cerrada.', false);
   }
 
+  function buildWazeUrl(client) {
+    if (!client) return '';
+    const parts = [client.address, client.city, client.region].filter(Boolean);
+    if (!parts.length) return '';
+    return 'https://waze.com/ul?q=' + encodeURIComponent(parts.join(', ')) + '&navigate=yes';
+  }
+
   function quoteItemTemplate(item) {
-    const clientName = (item.client && item.client.name) || 'Sin nombre';
+    const client = item.client || {};
+    const clientName = client.name || 'Sin nombre';
     const total = item.pricing && item.pricing.total ? `$${fmtNum(item.pricing.total)}` : '$0';
     const updated = item.updatedAt ? new Date(item.updatedAt).toLocaleString('es-CL') : 'Sin fecha';
     const status = item.status || 'draft';
+    const phone = client.phone ? client.phone.trim() : '';
+    const wazeUrl = buildWazeUrl(client);
+    const callBtn = phone
+      ? `<a class="quotes-btn secondary icon-btn" href="tel:${phone.replace(/\s/g, '')}" title="Llamar a ${clientName}"><i class="fas fa-phone"></i></a>`
+      : '';
+    const wazeBtn = wazeUrl
+      ? `<a class="quotes-btn secondary icon-btn" href="${wazeUrl}" target="_blank" rel="noopener noreferrer" title="Navegar con Waze"><i class="fas fa-route"></i></a>`
+      : '';
 
     return `<div class="quote-item" data-id="${item.id}">
       <div class="quote-head">
@@ -75,6 +91,7 @@
       <div class="quote-actions">
         <button class="quotes-btn" data-action="open" data-id="${item.id}">Abrir y editar</button>
         <button class="quotes-btn secondary" data-action="duplicate" data-id="${item.id}">Duplicar</button>
+        ${callBtn}${wazeBtn}
         <button class="quotes-btn danger" data-action="delete" data-id="${item.id}">Eliminar</button>
       </div>
     </div>`;

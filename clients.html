@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Lato:wght@300;400;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="quotes.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="quotes-page">
   <main class="quotes-shell">
@@ -69,9 +70,24 @@
       return status || 'Borrador';
     }
 
+    function buildWazeUrl(obj) {
+      var parts = [obj.address, obj.city, obj.region].filter(Boolean);
+      if (!parts.length) return '';
+      return 'https://waze.com/ul?q=' + encodeURIComponent(parts.join(', ')) + '&navigate=yes';
+    }
+
     function renderQuoteRow(q) {
       var total = (q.pricing && q.pricing.total) ? ('$' + fmtNum(q.pricing.total)) : '$0';
       var date = q.updatedAt ? new Date(q.updatedAt).toLocaleDateString('es-CL') : '-';
+      var client = q.client || {};
+      var phone = client.phone ? client.phone.trim() : '';
+      var wazeUrl = buildWazeUrl(client);
+      var callBtn = phone
+        ? '<a class="quotes-btn secondary icon-btn" href="tel:' + phone.replace(/\s/g, '') + '" title="Llamar"><i class="fas fa-phone"></i></a>'
+        : '';
+      var wazeBtn = wazeUrl
+        ? '<a class="quotes-btn secondary icon-btn" href="' + wazeUrl + '" target="_blank" rel="noopener noreferrer" title="Navegar con Waze"><i class="fas fa-route"></i></a>'
+        : '';
       return '<div class="quote-item">' +
         '<div class="quote-head">' +
           '<div>' +
@@ -82,6 +98,7 @@
         '</div>' +
         '<div class="quote-actions">' +
           '<button class="quotes-btn" data-action="open" data-id="' + q.id + '">Abrir y editar</button>' +
+          callBtn + wazeBtn +
         '</div>' +
       '</div>';
     }
@@ -99,6 +116,14 @@
         : clientQuotes.map(renderQuoteRow).join('');
 
       var countLabel = count === 1 ? '1 cotización' : (count + ' cotizaciones');
+      var phone = client.phone ? client.phone.trim() : '';
+      var wazeUrl = buildWazeUrl(client);
+      var callBtnCard = phone
+        ? '<a class="quotes-btn secondary icon-btn client-action-btn" href="tel:' + phone.replace(/\s/g, '') + '" title="Llamar a ' + (client.name || 'cliente') + '"><i class="fas fa-phone"></i></a>'
+        : '';
+      var wazeBtnCard = wazeUrl
+        ? '<a class="quotes-btn secondary icon-btn client-action-btn" href="' + wazeUrl + '" target="_blank" rel="noopener noreferrer" title="Navegar con Waze"><i class="fas fa-route"></i></a>'
+        : '';
 
       return '<div class="client-card" data-client-id="' + client.id + '">' +
         '<div class="client-card-header">' +
@@ -106,6 +131,7 @@
             '<div class="client-card-name">' + (client.name || 'Sin nombre') + '</div>' +
             '<div class="client-card-rut">' + (client.rut || 'Sin RUT') + '</div>' +
             '<div class="client-card-details">' + phoneHtml + emailHtml + locationHtml + '</div>' +
+            '<div class="client-card-actions">' + callBtnCard + wazeBtnCard + '</div>' +
           '</div>' +
           '<button class="client-toggle-btn" data-client-id="' + client.id + '" aria-expanded="false">' +
             '<span class="client-quote-count">' + countLabel + '</span>' +

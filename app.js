@@ -3,12 +3,12 @@
 // ============================================================
 
 const SERVICES = [
-  { id:'instalacion', name:'Instalación nueva', desc:'Primera instalación del equipo', price:100000, emoji:'🏗️' },
-  { id:'mantencion', name:'Mantención', desc:'Limpieza y revisión general', price:30000, emoji:'🔧' },
-  { id:'cambio', name:'Cambio + instalación', desc:'Retiro equipo antiguo + nuevo', price:120000, emoji:'🔄' },
-  { id:'reparacion', name:'Reparación', desc:'Diagnóstico y reparación de fallas', price:10000, emoji:'⚙️' },
-  { id:'garantia', name:'Visita garantía', desc:'Revisión por garantía vigente', price:0, emoji:'✅' },
-  { id:'presupuesto', name:'Solo presupuesto', desc:'Cotización sin instalación', price:0, emoji:'📋' },
+  { id:'instalacion', name:'Instalación nueva', desc:'Primera instalación del equipo', price:100000, icon:'fa-hammer' },
+  { id:'mantencion', name:'Mantención', desc:'Limpieza y revisión general', price:30000, icon:'fa-screwdriver-wrench' },
+  { id:'cambio', name:'Cambio + instalación', desc:'Retiro equipo antiguo + nuevo', price:120000, icon:'fa-arrow-right-arrow-left' },
+  { id:'reparacion', name:'Reparación', desc:'Diagnóstico y reparación de fallas', price:10000, icon:'fa-gear' },
+  { id:'garantia', name:'Visita garantía', desc:'Revisión por garantía vigente', price:0, icon:'fa-shield' },
+  { id:'presupuesto', name:'Solo presupuesto', desc:'Cotización sin instalación', price:0, icon:'fa-clipboard-list' },
 ];
 
 const SERVICE_PDF_CONTENT = {
@@ -215,7 +215,7 @@ async function loadFromFirebase(url, node, authToken = '') {
     renderACGrid();
     updateStep1NextButton();
     showFirebaseStatus('ok', `${data.length} equipos cargados desde Firebase`);
-    showToast(`✅ ${data.length} equipos actualizados`, 'success');
+    showToast(`${data.length} equipos actualizados`, 'success');
 
   } catch(e) {
     showFirebaseStatus('error', e.message);
@@ -500,7 +500,7 @@ function renderACGrid() {
   const count = document.getElementById('resultsCount');
   if (!grid) return;
   if (filteredAC.length === 0) {
-    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><p>No se encontraron equipos con esos filtros.</p></div>`;
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fas fa-magnifying-glass"></i></div><p>No se encontraron equipos con esos filtros.</p></div>`;
     if (count) count.innerHTML = '';
     return;
   }
@@ -540,16 +540,16 @@ function renderACGrid() {
         `).join('')}
       </div>
       <div class="ac-specs" aria-label="Especificaciones">
-        <span class="spec-tag icon-only wifi" title="${wifiLabel}" aria-label="${wifiLabel}">📶</span>
-        <span class="spec-tag icon-only warranty" title="${warYears}" aria-label="${warYears}">🛡️</span>
-        <span class="spec-tag icon-only" title="${kitLabel}" aria-label="${kitLabel}">📦</span>
+        <span class="spec-tag icon-only wifi" title="${wifiLabel}" aria-label="${wifiLabel}"><i class="fas fa-wifi"></i></span>
+        <span class="spec-tag icon-only warranty" title="${warYears}" aria-label="${warYears}"><i class="fas fa-shield-halved"></i></span>
+        <span class="spec-tag icon-only" title="${kitLabel}" aria-label="${kitLabel}"><i class="fas fa-box"></i></span>
       </div>
       ${isSelected ? renderACPrice(origIdx) : ''}
     </div>`;
   }).join('');
   } catch(err) {
     const grid = document.getElementById('acGrid');
-    if (grid) grid.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>Error al cargar: ${err.message}</p></div>`;
+    if (grid) grid.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fas fa-triangle-exclamation"></i></div><p>Error al cargar: ${err.message}</p></div>`;
   }
 }
 
@@ -592,7 +592,7 @@ function selectAC(idx, btu) {
   selectedBTU = btu;
   updateStep1NextButton();
   renderACGrid();
-  showToast(`✅ ${allAC[idx].brand_model} · ${(btu/1000).toFixed(0)}K (x${selectedEquipments[key]})`, 'success');
+  showToast(`${allAC[idx].brand_model} · ${(btu/1000).toFixed(0)}K (x${selectedEquipments[key]})`, 'success');
 }
 
 function changeEquipmentQty(idx, btu, delta) {
@@ -643,7 +643,7 @@ function renderServiceGrid() {
       const isActive = isMultiService(s.id) ? qty > 0 : selectedService === s.id;
       return `
     <div class="service-card ${isActive ? 'selected' : ''}" onclick="selectService('${s.id}')">
-      <div class="service-emoji">${s.emoji}</div>
+      <div class="service-icon"><i class="fas ${s.icon}"></i></div>
       <div class="service-name">${s.name}</div>
       <div class="service-price">${displayPrice > 0 ? '$'+fmtNum(displayPrice) : (isMultiService(s.id) ? 'No agregado' : 'Sin costo')}</div>
     </div>
@@ -672,7 +672,7 @@ function selectService(id) {
     updateMultiServiceInputs();
     renderServiceGrid();
     updateStep2NextButton();
-    showToast(`✅ ${id === 'instalacion' ? 'Instalaciones' : 'Mantenciones'}: ${serviceQtyMap[id]}`, 'success');
+    showToast(`${id === 'instalacion' ? 'Instalaciones' : 'Mantenciones'}: ${serviceQtyMap[id]}`, 'success');
     return;
   }
 
@@ -680,7 +680,7 @@ function selectService(id) {
   toggleRepairInputs();
   renderServiceGrid();
   updateStep2NextButton();
-  showToast('✅ Servicio seleccionado', 'success');
+  showToast('Servicio seleccionado', 'success');
 }
 
 function updateMultiServiceInputs() {
@@ -850,7 +850,7 @@ function renderServiceChip() {
   const equipTotal = selectedItems.reduce((sum, item) => sum + (item.cap.price_with_tax * item.qty), 0);
   chip.innerHTML = `
     <div class="selection-chip">
-      <div class="chip-icon">❄️</div>
+      <div class="chip-icon"><i class="fas fa-snowflake"></i></div>
       <div class="chip-info">
         <div class="chip-title">Equipos seleccionados: ${equipCount}</div>
         <div class="chip-sub">${selectedItems.slice(0, 2).map(item => `${item.ac.brand_model} ${(item.btu/1000).toFixed(0)}K x${item.qty}`).join(' · ')}${selectedItems.length > 2 ? ' ...' : ''}</div>
@@ -1202,7 +1202,7 @@ async function generatePDF() {
   doc.text(quoteNumber, pageW - margin, pageH - 9, { align: 'right' });
 
   doc.save(`${quoteNumber}.pdf`);
-  showToast('📄 PDF generado correctamente', 'success');
+  showToast('PDF generado correctamente', 'success');
 }
 
 let pdfLogoCache = null;
@@ -1792,5 +1792,5 @@ function resetAll(options = {}) {
   renderAccGrid();
   renderServiceGrid();
   goToStep(1);
-  showToast('🔄 Nueva cotización iniciada', 'success');
+  showToast('Nueva cotización iniciada', 'success');
 }
