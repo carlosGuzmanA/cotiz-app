@@ -96,6 +96,7 @@ let toastTimer = null;
 let repairQty = 1;
 let repairUnitValue = 10000;
 let serviceQtyMap = { instalacion: 0, mantencion: 0 };
+let activeQuoteId = null;
 
 function equipKey(idx, btu) {
   return `${idx}__${btu}`;
@@ -144,8 +145,8 @@ function preloadInstallationsFromEquipment() {
 // ============================================================
 // INIT
 // ============================================================
-function init() {
-  try { generateQuoteNumber(); } catch(e) {}
+async function init() {
+  try { await generateQuoteNumber(); } catch(e) {}
   try { renderAccGrid(); } catch(e) {}
   try { renderServiceGrid(); } catch(e) {}
   try { updateMultiServiceInputs(); } catch(e) {}
@@ -158,12 +159,17 @@ function init() {
 
   if (activeUrl) {
     // Carga equipos y accesorios en paralelo desde Firebase
-    loadFromFirebase(activeUrl, activeNode, activeToken);
-    loadAccessoriesFromFirebase(activeUrl, activeToken);
+    await Promise.all([
+      loadFromFirebase(activeUrl, activeNode, activeToken),
+      loadAccessoriesFromFirebase(activeUrl, activeToken)
+    ]);
   } else {
     loadDemoData();
     showFirebaseStatus('error', 'Sin Firebase configurado — usando datos demo');
   }
+
+  window.__cotizAppReady = true;
+  document.dispatchEvent(new CustomEvent('cotiz:app-ready'));
 }
 
 if (document.readyState === 'loading') {
@@ -318,11 +324,93 @@ function getFirebaseConfig() {
   return null;
 }
 
-function generateQuoteNumber() {
+function getQuoteDatePart(date = new Date()) {
+  return String(date.getFullYear());
+}
+
+function buildQuoteNumber(datePart, sequence) {
+  return `CL-${datePart}-${String(Math.max(1, Number(sequence) || 1)).padStart(4, '0')}`;
+}
+
+function parseQuoteSequence(quoteNum, datePart) {
+  if (!quoteNum) return 0;
+  const normalized = String(quoteNum).trim().toUpperCase();
+
+  // Nuevo formato: CL-2026-0001
+  const currentFmt = normalized.match(/^CL-(\d{4})-(\d{4,})$/);
+  if (currentFmt) {
+    if (datePart && currentFmt[1] !== String(datePart)) return 0;
+    return Number(currentFmt[2] || 0) || 0;
+  }
+
+  // Compatibilidad con formato anterior: COT-20260311-0001
+  const legacyFmt = normalized.match(/^COT-(\d{8})-(\d{4,})$/);
+  if (legacyFmt) {
+    const legacyYear = legacyFmt[1].slice(0, 4);
+    if (datePart && legacyYear !== String(datePart)) return 0;
+    return Number(legacyFmt[2] || 0) || 0;
+  }
+
+  return 0;
+}
+
+function getLocalQuoteCounterKey(datePart) {
+  return `cotiz_quote_counter_${datePart}`;
+}
+
+function readLocalQuoteCounter(datePart) {
+  try {
+    return Number(localStorage.getItem(getLocalQuoteCounterKey(datePart)) || 0) || 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function writeLocalQuoteCounter(datePart, value) {
+  try {
+    localStorage.setItem(getLocalQuoteCounterKey(datePart), String(Math.max(0, Number(value) || 0)));
+  } catch (e) {}
+}
+
+async function getNextQuoteSequenceFromFirebase(datePart) {
+  if (!window.FirebaseAuthService || !window.QuotesRepo) return null;
+
+  const user = window.FirebaseAuthService.getCurrentUser();
+  if (!user || !user.uid) return null;
+
+  const idToken = await window.FirebaseAuthService.getValidIdToken();
+  if (!idToken) return null;
+
+  const quotes = await window.QuotesRepo.listQuotes(user.uid, idToken);
+  const maxSequence = (quotes || []).reduce((max, q) => {
+    const seq = parseQuoteSequence(q && q.quoteNumber, datePart);
+    return seq > max ? seq : max;
+  }, 0);
+
+  return maxSequence + 1;
+}
+
+async function generateQuoteNumber() {
   const d = new Date();
-  const pad = n => String(n).padStart(2,'0');
-  quoteNumber = `COT-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${Math.floor(Math.random()*9000+1000)}`;
-  document.getElementById('quoteNumHeader').textContent = quoteNumber;
+  const datePart = getQuoteDatePart(d);
+
+  // Fallback inmediato para no dejar la UI sin numero.
+  const localNext = readLocalQuoteCounter(datePart) + 1;
+  writeLocalQuoteCounter(datePart, localNext);
+  setQuoteNumberValue(buildQuoteNumber(datePart, localNext));
+
+  // Si hay sesion + acceso a repo, ajustar al consecutivo real de Firebase.
+  try {
+    const firebaseNext = await getNextQuoteSequenceFromFirebase(datePart);
+    if (firebaseNext) {
+      writeLocalQuoteCounter(datePart, firebaseNext);
+      setQuoteNumberValue(buildQuoteNumber(datePart, firebaseNext));
+    }
+  } catch (e) {
+    // Mantiene el consecutivo local cuando Firebase no esta disponible.
+  }
+
+  return quoteNumber;
 }
 
 function loadDemoData() {
@@ -1237,6 +1325,212 @@ function appendServiceInfoToPdf(doc, startY, margin, pageW, selectedServiceItems
 }
 
 // ============================================================
+// PERSISTENCE BRIDGE (guardar/recuperar cotizaciones)
+// ============================================================
+function getActiveQuoteId() {
+  return activeQuoteId;
+}
+
+function setActiveQuoteId(value) {
+  activeQuoteId = value || null;
+}
+
+function setQuoteNumberValue(value) {
+  if (!value) return;
+  quoteNumber = String(value);
+  const header = document.getElementById('quoteNumHeader');
+  if (header) header.textContent = quoteNumber;
+}
+
+function getQuoteNumberValue() {
+  return quoteNumber;
+}
+
+function getAccessoriesQtySnapshot() {
+  const snapshot = {};
+  ACCESSORIES.forEach(acc => {
+    const qty = Number(accQty[acc.id] || 0);
+    if (qty > 0) snapshot[acc.id] = qty;
+  });
+  return snapshot;
+}
+
+function getEquipmentSelectionsSnapshot() {
+  return getSelectedEquipmentItems().map(item => ({
+    marca: item.ac.marca || '',
+    brandModel: item.ac.brand_model || '',
+    btu: Number(item.btu),
+    qty: Number(item.qty)
+  }));
+}
+
+function getClientSnapshot() {
+  return {
+    name: document.getElementById('clientName').value || '',
+    rut: document.getElementById('clientRut').value || '',
+    phone: document.getElementById('clientPhone').value || '',
+    email: document.getElementById('clientEmail').value || '',
+    address: document.getElementById('clientAddress').value || '',
+    city: document.getElementById('clientCity').value || '',
+    region: document.getElementById('clientRegion').value || '',
+    property: document.getElementById('clientProperty').value || '',
+    notes: document.getElementById('clientNotes').value || ''
+  };
+}
+
+function exportQuoteSnapshot(status = 'draft') {
+  const selectedServiceItems = getSelectedServiceItems();
+  const serviceTotal = selectedServiceItems.reduce((sum, item) => sum + item.totalPrice, 0);
+  const equipmentTotal = getEquipmentTotalPrice();
+  let accessoriesTotal = 0;
+  ACCESSORIES.forEach(acc => {
+    accessoriesTotal += (accQty[acc.id] || 0) * acc.price;
+  });
+
+  const equipInput = document.getElementById('sumEquipPrice');
+  const svcInput = document.getElementById('sumServicePrice');
+  const discountInput = document.getElementById('discountPct');
+
+  const equipPrice = equipInput ? (parseFloat(equipInput.value) || equipmentTotal) : equipmentTotal;
+  const servicePrice = svcInput ? (parseFloat(svcInput.value) || serviceTotal) : serviceTotal;
+  const discountPct = discountInput ? (parseFloat(discountInput.value) || 0) : 0;
+  const subtotal = equipPrice + servicePrice + accessoriesTotal;
+  const discountAmount = subtotal * discountPct / 100;
+  const total = subtotal - discountAmount;
+
+  return {
+    schemaVersion: 1,
+    status,
+    quoteNumber,
+    quoteDate: new Date().toISOString(),
+    activeQuoteId,
+    client: getClientSnapshot(),
+    notes: {
+      service: document.getElementById('serviceNotes').value || '',
+      client: document.getElementById('clientNotes').value || ''
+    },
+    equipmentSelections: getEquipmentSelectionsSnapshot(),
+    serviceSelection: {
+      selectedService,
+      serviceQtyMap: {
+        instalacion: Number(serviceQtyMap.instalacion || 0),
+        mantencion: Number(serviceQtyMap.mantencion || 0)
+      },
+      repairQty: Number(repairQty || 1),
+      repairUnitValue: Number(repairUnitValue || 0)
+    },
+    accessoriesQty: getAccessoriesQtySnapshot(),
+    pricing: {
+      equipment: Math.round(equipPrice),
+      services: Math.round(servicePrice),
+      accessories: Math.round(accessoriesTotal),
+      subtotal: Math.round(subtotal),
+      discountPct,
+      discountAmount: Math.round(discountAmount),
+      total: Math.round(total)
+    }
+  };
+}
+
+function findEquipmentIndexForSnapshot(item) {
+  const targetModel = (item.brandModel || '').trim().toLowerCase();
+  const targetBrand = (item.marca || '').trim().toLowerCase();
+  const targetBtu = Number(item.btu || 0);
+
+  for (let i = 0; i < allAC.length; i++) {
+    const ac = allAC[i];
+    if (!ac) continue;
+    const modelOk = (ac.brand_model || '').trim().toLowerCase() === targetModel;
+    const brandOk = !targetBrand || (ac.marca || '').trim().toLowerCase() === targetBrand;
+    const btuOk = (ac.capacities || []).some(c => Number(c.btu_capacity) === targetBtu);
+    if (modelOk && brandOk && btuOk) return i;
+  }
+  return -1;
+}
+
+function importQuoteSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return;
+
+  resetAll({ skipQuoteNumber: true });
+
+  setActiveQuoteId(snapshot.id || snapshot.activeQuoteId || null);
+  setQuoteNumberValue(snapshot.quoteNumber);
+
+  const client = snapshot.client || {};
+  const setVal = (id, value) => {
+    const el = document.getElementById(id);
+    if (el && value !== undefined && value !== null) el.value = value;
+  };
+
+  setVal('clientName', client.name || '');
+  setVal('clientRut', client.rut || '');
+  setVal('clientPhone', client.phone || '');
+  setVal('clientEmail', client.email || '');
+  setVal('clientAddress', client.address || '');
+  setVal('clientCity', client.city || '');
+  setVal('clientRegion', client.region || '');
+  setVal('clientProperty', client.property || '');
+  setVal('clientNotes', client.notes || '');
+  setVal('serviceNotes', (snapshot.notes && snapshot.notes.service) || '');
+
+  // Restaurar equipo
+  const equipmentSelections = Array.isArray(snapshot.equipmentSelections) ? snapshot.equipmentSelections : [];
+  equipmentSelections.forEach(item => {
+    const idx = findEquipmentIndexForSnapshot(item);
+    if (idx < 0) return;
+    const qty = Math.max(1, Number(item.qty || 1));
+    for (let i = 0; i < qty; i++) {
+      selectAC(idx, Number(item.btu));
+    }
+  });
+
+  // Restaurar servicios
+  const svcSelection = snapshot.serviceSelection || {};
+  const svcQtyMap = svcSelection.serviceQtyMap || {};
+  setVal('serviceQtyInstInput', Math.max(0, Number(svcQtyMap.instalacion || 0)));
+  setVal('serviceQtyMantInput', Math.max(0, Number(svcQtyMap.mantencion || 0)));
+  updateServiceQtyValue();
+
+  if (svcSelection.selectedService) {
+    selectService(svcSelection.selectedService);
+    if (svcSelection.selectedService === 'reparacion') {
+      setVal('repairQty', Math.max(1, Number(svcSelection.repairQty || 1)));
+      setVal('repairUnitValue', Math.max(0, Number(svcSelection.repairUnitValue || 0)));
+      updateRepairServiceValue();
+    }
+  }
+
+  // Restaurar accesorios
+  const accessoriesQty = snapshot.accessoriesQty || {};
+  Object.entries(accessoriesQty).forEach(([accId, qty]) => {
+    const target = Math.max(0, Number(qty || 0));
+    for (let i = 0; i < target; i++) {
+      changeQty(accId, 1);
+    }
+  });
+
+  setVal('discountPct', Number(snapshot.pricing && snapshot.pricing.discountPct || 0));
+  buildSummary();
+
+  if (snapshot.pricing) {
+    setVal('sumEquipPrice', Number(snapshot.pricing.equipment || 0));
+    setVal('sumServicePrice', Number(snapshot.pricing.services || 0));
+    recalcTotal();
+  }
+
+  goToStep(5);
+}
+
+window.CotizPersistenceBridge = {
+  exportQuoteSnapshot,
+  importQuoteSnapshot,
+  getActiveQuoteId,
+  setActiveQuoteId,
+  getQuoteNumberValue,
+  setQuoteNumberValue
+};
+
+// ============================================================
 // HELPERS
 // ============================================================
 function fmtNum(n) {
@@ -1266,7 +1560,9 @@ function showToast(msg, type = 'success') {
   }, 2600);
 }
 
-function resetAll() {
+function resetAll(options = {}) {
+  const skipQuoteNumber = !!options.skipQuoteNumber;
+  activeQuoteId = null;
   selectedAC = null;
   selectedBTU = null;
   selectedEquipments = {};
@@ -1296,7 +1592,9 @@ function resetAll() {
   updateMultiServiceInputs();
   toggleRepairInputs();
   updateStep2NextButton();
-  generateQuoteNumber();
+  if (!skipQuoteNumber) {
+    generateQuoteNumber().catch(() => {});
+  }
   renderACGrid();
   renderAccGrid();
   renderServiceGrid();

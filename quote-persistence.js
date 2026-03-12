@@ -1,0 +1,303 @@
+(function() {
+  const PENDING_QUOTE_STORAGE_KEY = 'cotiz_pending_quote_v1';
+
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+  function getBridge() {
+    return window.CotizPersistenceBridge || null;
+  }
+
+  function showToastSafe(message, type) {
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, type || 'success');
+    }
+  }
+
+  async function getAuthContext(requireAuth) {
+    if (!window.FirebaseAuthService) {
+      if (requireAuth) throw new Error('Módulo de autenticación no disponible.');
+      return null;
+    }
+
+    const user = window.FirebaseAuthService.getCurrentUser();
+    const idToken = await window.FirebaseAuthService.getValidIdToken();
+
+    if (!user || !idToken) {
+      if (requireAuth) throw new Error('Debes iniciar sesión en Historial para guardar cotizaciones.');
+      return null;
+    }
+
+    return { user, idToken };
+  }
+
+  async function persistCurrentQuote(status, options) {
+    const opts = options || {};
+    const requireAuth = !!opts.requireAuth;
+    const silent = !!opts.silent;
+
+    if (!window.QuotesRepo) {
+      if (!silent) showToastSafe('No se pudo guardar: módulo de cotizaciones no cargado.', 'error');
+      return null;
+    }
+
+    const bridge = getBridge();
+    if (!bridge) {
+      if (!silent) showToastSafe('No se pudo guardar: puente de estado no disponible.', 'error');
+      return null;
+    }
+
+    try {
+      const auth = await getAuthContext(requireAuth);
+      if (!auth) return null;
+
+      const existingId = bridge.getActiveQuoteId();
+      const payload = bridge.exportQuoteSnapshot(status || 'draft');
+      const result = await window.QuotesRepo.saveQuote(auth.user.uid, auth.idToken, payload, existingId || null);
+      bridge.setActiveQuoteId(result.id);
+
+      if (!silent) {
+        const label = status === 'issued' ? 'emitida' : 'guardada';
+        showToastSafe(`💾 Cotización ${label} correctamente`, 'success');
+      }
+
+      return result;
+    } catch (e) {
+      if (!silent) showToastSafe(`No se pudo guardar: ${e.message}`, 'error');
+      return null;
+    }
+  }
+
+  async function saveDraftQuote() {
+    return persistCurrentQuote('draft', { requireAuth: true, silent: false });
+  }
+
+  function readPendingQuote() {
+    try {
+      const raw = sessionStorage.getItem(PENDING_QUOTE_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function clearPendingQuote() {
+    sessionStorage.removeItem(PENDING_QUOTE_STORAGE_KEY);
+  }
+
+  function applyPendingQuoteIfAny() {
+    const bridge = getBridge();
+    if (!bridge) return;
+
+    const payload = readPendingQuote();
+    if (!payload || !payload.quote) return;
+
+    const originalToast = window.showToast;
+    window.showToast = function() {};
+    try {
+      bridge.importQuoteSnapshot(payload.quote);
+    } finally {
+      window.showToast = originalToast;
+      clearPendingQuote();
+    }
+
+    showToastSafe('Cotización cargada para edición', 'success');
+  }
+
+  function patchGeneratePdfForAutosave() {
+    if (typeof window.generatePDF !== 'function') return;
+    if (window.generatePDF.__patchedWithPersistence) return;
+
+    const original = window.generatePDF;
+    window.generatePDF = async function patchedGeneratePDF() {
+      let saved = null;
+      try {
+        saved = await persistCurrentQuote('issued', { requireAuth: false, silent: true });
+      } catch (e) {
+        saved = null;
+      }
+
+      await original();
+
+      if (saved) {
+        showToastSafe('PDF generado y cotización guardada', 'success');
+      }
+    };
+
+    window.generatePDF.__patchedWithPersistence = true;
+  }
+
+  function closeMenu() {
+    const menu = $('hamburgerMenu');
+    const trigger = $('btnHamburgerMenu');
+    if (menu) menu.style.display = 'none';
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+  }
+
+  function openMenu() {
+    const menu = $('hamburgerMenu');
+    const trigger = $('btnHamburgerMenu');
+    if (menu) menu.style.display = 'block';
+    if (trigger) trigger.setAttribute('aria-expanded', 'true');
+  }
+
+  function isAuthenticated() {
+    if (!window.FirebaseAuthService) return false;
+    return !!window.FirebaseAuthService.getCurrentUser();
+  }
+
+  function updateAuthMenuState() {
+    const loginAction = $('menuLoginAction');
+    const historyAction = $('menuOpenHistory');
+    const sessionText = $('menuSessionText');
+    const auth = window.FirebaseAuthService;
+    const user = auth ? auth.getCurrentUser() : null;
+    const logged = !!user;
+
+    if (historyAction) historyAction.disabled = !logged;
+    if (loginAction) loginAction.textContent = logged ? 'Cerrar sesión' : 'Iniciar sesión';
+    if (sessionText) sessionText.textContent = logged ? `Sesión: ${user.email || user.uid}` : 'Sin sesión';
+  }
+
+  function openLoginModal() {
+    const modal = $('loginModal');
+    const status = $('loginModalStatus');
+    if (status) {
+      status.textContent = '';
+      status.style.color = 'var(--text-muted)';
+    }
+    if (modal) modal.classList.add('open');
+  }
+
+  function closeLoginModal() {
+    const modal = $('loginModal');
+    if (modal) modal.classList.remove('open');
+  }
+
+  async function submitLoginFromModal() {
+    if (!window.FirebaseAuthService) {
+      showToastSafe('No se pudo iniciar sesión: módulo auth no cargado.', 'error');
+      return;
+    }
+
+    const emailEl = $('loginEmailInput');
+    const passwordEl = $('loginPasswordInput');
+    const statusEl = $('loginModalStatus');
+    const email = emailEl ? emailEl.value.trim() : '';
+    const password = passwordEl ? passwordEl.value : '';
+
+    if (!email || !password) {
+      if (statusEl) {
+        statusEl.textContent = 'Completa correo y contraseña.';
+        statusEl.style.color = 'var(--red)';
+      }
+      return;
+    }
+
+    try {
+      if (statusEl) {
+        statusEl.textContent = 'Validando credenciales...';
+        statusEl.style.color = 'var(--text-muted)';
+      }
+      await window.FirebaseAuthService.signIn(email, password);
+      updateAuthMenuState();
+      closeLoginModal();
+      showToastSafe('Sesión iniciada. Historial habilitado.', 'success');
+    } catch (e) {
+      const mapper = window.FirebaseAuthService.mapAuthError;
+      const msg = typeof mapper === 'function' ? mapper(e.message || 'Error de autenticación') : (e.message || 'Error de autenticación');
+      if (statusEl) {
+        statusEl.textContent = msg;
+        statusEl.style.color = 'var(--red)';
+      }
+    }
+  }
+
+  function bindHeaderMenuEvents() {
+    const menuTrigger = $('btnHamburgerMenu');
+    const menuNode = $('hamburgerMenu');
+    const loginAction = $('menuLoginAction');
+    const historyAction = $('menuOpenHistory');
+    const closeLoginBtn = $('btnCloseLoginModal');
+    const submitLoginBtn = $('btnSubmitLoginModal');
+    const loginModal = $('loginModal');
+
+    if (menuTrigger && menuNode) {
+      menuTrigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const isOpen = menuNode.style.display === 'block';
+        if (isOpen) closeMenu(); else openMenu();
+      });
+    }
+
+    if (loginAction) {
+      loginAction.addEventListener('click', function() {
+        closeMenu();
+        if (isAuthenticated()) {
+          window.FirebaseAuthService.signOut();
+          updateAuthMenuState();
+          showToastSafe('Sesión cerrada.', 'success');
+          return;
+        }
+        openLoginModal();
+      });
+    }
+
+    if (historyAction) {
+      historyAction.addEventListener('click', function() {
+        closeMenu();
+        if (!isAuthenticated()) {
+          showToastSafe('Inicia sesión para ver el historial.', 'error');
+          openLoginModal();
+          return;
+        }
+        window.location.href = 'quotes.html';
+      });
+    }
+
+    if (closeLoginBtn) closeLoginBtn.addEventListener('click', closeLoginModal);
+    if (submitLoginBtn) submitLoginBtn.addEventListener('click', submitLoginFromModal);
+
+    const passwordInput = $('loginPasswordInput');
+    if (passwordInput) {
+      passwordInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          submitLoginFromModal();
+        }
+      });
+    }
+
+    if (loginModal) {
+      loginModal.addEventListener('click', function(e) {
+        if (e.target === loginModal) closeLoginModal();
+      });
+    }
+
+    document.addEventListener('click', function(e) {
+      if (!menuNode || menuNode.style.display !== 'block') return;
+      if (menuNode.contains(e.target) || (menuTrigger && menuTrigger.contains(e.target))) return;
+      closeMenu();
+    });
+  }
+
+  function initPersistenceFeatures() {
+    patchGeneratePdfForAutosave();
+    applyPendingQuoteIfAny();
+    bindHeaderMenuEvents();
+    updateAuthMenuState();
+  }
+
+  window.saveDraftQuote = saveDraftQuote;
+  window.CotizQuotePersistence = {
+    persistCurrentQuote,
+    PENDING_QUOTE_STORAGE_KEY
+  };
+
+  if (window.__cotizAppReady) {
+    initPersistenceFeatures();
+  } else {
+    document.addEventListener('cotiz:app-ready', initPersistenceFeatures, { once: true });
+  }
+})();

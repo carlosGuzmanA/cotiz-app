@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Historial de Cotizaciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Lato:wght@300;400;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="quotes.css">
+</head>
+<body class="quotes-page">
+  <main class="quotes-shell">
+    <div class="quotes-topbar">
+      <div>
+        <h1 class="quotes-title">Historial</h1>
+        <p class="quotes-sub">Consulta, edita y vuelve a emitir cotizaciones guardadas.</p>
+      </div>
+      <div class="quotes-actions">
+        <button id="btnBackApp" class="quotes-btn secondary" type="button">Volver a la app</button>
+        <button id="btnLogout" class="quotes-btn danger" type="button">Cerrar sesión</button>
+      </div>
+    </div>
+
+    <p id="sessionInfo" class="quotes-sub">Sin sesión</p>
+
+    <section id="authCard" class="auth-card">
+      <h2>Iniciar sesión</h2>
+      <p class="quotes-sub">Usa usuario y contraseña de Firebase Authentication.</p>
+      <form id="loginForm" class="form-stack">
+        <input id="loginEmail" class="quotes-input" type="email" placeholder="usuario@empresa.cl" required>
+        <input id="loginPassword" class="quotes-input" type="password" placeholder="Contraseña" required>
+        <button class="quotes-btn" type="submit">Entrar</button>
+      </form>
+    </section>
+
+    <section id="quotesListCard" class="list-card hidden">
+      <h2>Cotizaciones guardadas</h2>
+      <p class="quotes-sub">Abre una cotización para editarla antes de volver a generar PDF.</p>
+      <div id="quoteList" class="quote-list"></div>
+    </section>
+
+    <p id="quotesStatus" class="status-line"></p>
+  </main>
+
+  <script src="firebase-auth.js"></script>
+  <script src="quotes-repo.js"></script>
+  <script src="quotes.js"></script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+body.quotes-page {
+  background: #f4f2ee;
+  font-family: 'Lato', sans-serif;
+  color: #1a1612;
+}
+
+.quotes-shell {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px 90px;
+}
+
+.quotes-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.quotes-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 34px;
+  color: #1a3a5c;
+}
+
+.quotes-sub {
+  font-size: 12px;
+  color: #6a655e;
+}
+
+.auth-card,
+.list-card {
+  background: #fff;
+  border: 1px solid #d8d2c8;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(26, 22, 18, 0.08);
+  padding: 16px;
+}
+
+.auth-card {
+  max-width: 420px;
+  margin: 24px auto;
+}
+
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.quotes-input {
+  border: 1px solid #d8d2c8;
+  border-radius: 4px;
+  height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.quotes-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quotes-btn {
+  border: 1px solid #1a3a5c;
+  background: #1a3a5c;
+  color: #fff;
+  border-radius: 4px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+}
+
+.quotes-btn.secondary {
+  background: #fff;
+  color: #1a3a5c;
+}
+
+.quotes-btn.danger {
+  border-color: #8b2e0f;
+  background: #8b2e0f;
+  color: #fff;
+}
+
+.status-line {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #6a655e;
+}
+
+.quote-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.quote-item {
+  border: 1px solid #d8d2c8;
+  border-radius: 4px;
+  background: #faf9f6;
+  padding: 12px;
+}
+
+.quote-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.quote-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: #1a3a5c;
+  font-weight: 700;
+}
+
+.quote-meta {
+  font-size: 11px;
+  color: #6a655e;
+}
+
+.quote-client {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.quote-total {
+  font-family: 'DM Mono', monospace;
+  color: #1a3a5c;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.quote-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.hidden {
+  display: none !important;
+}

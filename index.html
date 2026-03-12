@@ -19,7 +19,15 @@
     <div class="logo-icon">❄️</div>
     <div class="logo-text">Cotiza<span>Clima</span></div>
   </div>
-  <div style="display:flex; align-items:center; gap:8px;">
+  <div class="header-actions">
+    <button id="btnHamburgerMenu" class="hamburger-btn" type="button" aria-expanded="false" aria-label="Abrir menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="hamburger-menu" id="hamburgerMenu" style="display:none;">
+      <button id="menuLoginAction" class="hamburger-item" type="button">Iniciar sesión</button>
+      <button id="menuOpenHistory" class="hamburger-item" type="button" disabled>Ver historial</button>
+      <div id="menuSessionText" class="hamburger-session">Sin sesión</div>
+    </div>
     <div id="fbStatusDot" title="Sin conexión Firebase — usando datos demo" style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.25);flex-shrink:0;transition:background 0.4s;"></div>
     <div style="font-size:11px; font-family:'DM Mono',monospace; color:rgba(255,255,255,0.55); letter-spacing:0.5px;" id="quoteNumHeader"></div>
   </div>
@@ -359,6 +367,7 @@
     </div>
     <div class="btn-row" style="margin-top:10px">
       <button class="btn btn-secondary" onclick="goToStep(4)">← Editar datos</button>
+      <button class="btn btn-secondary" onclick="saveDraftQuote()">💾 Guardar borrador</button>
       <button class="btn btn-danger" onclick="resetAll()">🔄 Nueva cotiz.</button>
     </div>
   </div>
@@ -367,6 +376,31 @@
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+
+<!-- LOGIN MODAL -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Iniciar sesión</div>
+    <p class="notes-hint" style="margin-bottom:14px;">El uso de la app es libre. Inicia sesión solo si quieres acceder al historial de cotizaciones.</p>
+
+    <div class="form-group">
+      <label class="form-label">Correo</label>
+      <input type="email" class="form-input" id="loginEmailInput" placeholder="usuario@empresa.cl">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Contraseña</label>
+      <input type="password" class="form-input" id="loginPasswordInput" placeholder="Tu contraseña">
+    </div>
+
+    <div id="loginModalStatus" class="notes-hint" style="margin-top:6px; min-height:16px;"></div>
+
+    <div class="btn-row" style="margin-top:12px;">
+      <button class="btn btn-secondary" type="button" id="btnCloseLoginModal">Cancelar</button>
+      <button class="btn btn-primary" type="button" id="btnSubmitLoginModal">Ingresar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Hidden step control buttons (used by app.js to manage state) -->
 <button id="btnStep1Next" disabled style="display:none" onclick="goToStep(2)">Continuars</button>
@@ -454,6 +488,9 @@
 })();
 </script>
 
+<script src="firebase-auth.js"></script>
+<script src="quotes-repo.js"></script>
 <script src="app.js"></script>
+<script src="quote-persistence.js"></script>
 </body>
 </html>
