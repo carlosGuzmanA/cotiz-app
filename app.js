@@ -775,10 +775,41 @@ function getSelectedServiceItems() {
 // ============================================================
 // RENDER ACCESSORIES
 // ============================================================
+// Maps accessory IDs (and fallback categories) to Font Awesome icon classes.
+// Edit this object to change any icon without touching Firebase.
+const ACC_ICON_MAP = {
+  // By ID (takes priority)
+  kit_can_9k:        'fa-ruler-combined',
+  kit_can_12_18k:    'fa-ruler-combined',
+  kit_can_24k:       'fa-ruler-combined',
+  cordon_15:         'fa-bolt',
+  cordon_25:         'fa-bolt',
+  soporte_techo:     'fa-thumbtack',
+  kit_drenaje:       'fa-droplet',
+  breaker_16a:       'fa-plug',
+  mantencion_lavado: 'fa-spray-can-sparkles',
+  gas_r410_12k:      'fa-temperature-low',
+  gas_r410_18_32k:   'fa-temperature-low',
+  gas_r32_12k:       'fa-temperature-low',
+  gas_r32_18_32k:    'fa-temperature-low',
+  // Fallback by category
+  _cat_cañerias:     'fa-ruler-combined',
+  _cat_electrico:    'fa-bolt',
+  _cat_instalacion:  'fa-screwdriver-wrench',
+  _cat_mantencion:   'fa-spray-can-sparkles',
+  _cat_gas:          'fa-temperature-low',
+};
+
+function getAccIcon(acc) {
+  return ACC_ICON_MAP[acc.id]
+    || ACC_ICON_MAP['_cat_' + (acc.categoria || '')]
+    || 'fa-box';
+}
+
 function renderAccGrid() {
   document.getElementById('accGrid').innerHTML = ACCESSORIES.map(acc => `
     <div class="acc-card">
-      <div class="acc-icon" style="background:${acc.color}">${acc.icon}</div>
+      <div class="acc-icon" style="background:${acc.color}"><i class="fas ${getAccIcon(acc)}"></i></div>
       <div class="acc-info">
         <div class="acc-name">${acc.name}</div>
         <div class="acc-desc">${acc.desc}</div>
