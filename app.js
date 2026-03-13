@@ -1133,7 +1133,7 @@ function recalcTotal() {
 // ============================================================
 // PDF GENERATION
 // ============================================================
-async function generatePDF() {
+async function buildPDFDoc() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
@@ -1379,8 +1379,49 @@ async function generatePDF() {
   doc.setTextColor(238, 240, 244);
   doc.text(quoteNumber, pageW - margin, pageH - 9, { align: 'right' });
 
+  return doc;
+}
+
+async function generatePDF() {
+  const doc = await buildPDFDoc();
   doc.save(`${quoteNumber}.pdf`);
   showToast('PDF generado correctamente', 'success');
+}
+
+async function shareViaWhatsApp() {
+  showToast('Generando PDF…', 'info');
+  let doc;
+  try {
+    doc = await buildPDFDoc();
+  } catch (e) {
+    showToast('Error al generar el PDF', 'error');
+    return;
+  }
+
+  const fileName = `${quoteNumber}.pdf`;
+  const blob = doc.output('blob');
+  const file = new File([blob], fileName, { type: 'application/pdf' });
+
+  const clientName = document.getElementById('clientName').value || '';
+  const total = document.getElementById('grandTotal').textContent || '0';
+  const quoteNum = document.getElementById('sumQuoteNum').textContent || quoteNumber;
+  const shareText = `Hola! Adjunto la cotización *${quoteNum}* para ${clientName}.\nTotal: *$${total}*`;
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ title: `Cotización ${quoteNum}`, text: shareText, files: [file] });
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+
+  // Fallback: abrir WhatsApp con texto (sin adjunto)
+  const url = `https://wa.me/?text=${encodeURIComponent(shareText + '\n\n(Descargue el PDF desde la app)')}`;
+  window.open(url, '_blank', 'noopener');
+  // También descarga el PDF para que el usuario lo adjunte manualmente
+  doc.save(fileName);
+  showToast('Abre WhatsApp y adjunta el PDF descargado', 'info');
 }
 
 let pdfLogoCache = null;
