@@ -97,6 +97,9 @@ let repairQty = 1;
 let repairUnitValue = 10000;
 let serviceQtyMap = { instalacion: 0, mantencion: 0 };
 let activeQuoteId = null;
+let acRankings = {};
+// 0 = más cotizados (desc), 1 = menos cotizados (asc), 2 = orden original
+let sortRankingMode = 0;
 
 function equipKey(idx, btu) {
   return `${idx}__${btu}`;
@@ -170,6 +173,41 @@ async function init() {
 
   window.__cotizAppReady = true;
   document.dispatchEvent(new CustomEvent('cotiz:app-ready'));
+  updateSortBtn(); // refleja modo inicial en el botón
+  loadRankings().then(() => { if (Object.keys(acRankings).length > 0) filterAC(); }); // activa sort al cargar
+}
+
+async function loadRankings() {
+  if (!window.RankingRepo || !window.FirebaseAuthService) return;
+  const user = window.FirebaseAuthService.getCurrentUser();
+  if (!user) return;
+  try {
+    const idToken = await window.FirebaseAuthService.getValidIdToken();
+    acRankings = await window.RankingRepo.getRankings(user.uid, idToken);
+  } catch (e) { /* silencioso */ }
+}
+
+const SORT_MODES = [
+  { label: 'Más cotizados',   icon: 'fa-fire',        active: true  },
+  { label: 'Menos cotizados', icon: 'fa-fire-flame-simple', active: true  },
+  { label: 'Orden original',  icon: 'fa-list',        active: false }
+];
+
+function updateSortBtn() {
+  const btn = document.getElementById('btnSortPopular');
+  if (!btn) return;
+  const mode = SORT_MODES[sortRankingMode];
+  btn.innerHTML = `<i class="fas ${mode.icon}"></i> ${mode.label}`;
+  btn.classList.toggle('active', mode.active);
+}
+
+async function toggleSortByPopular() {
+  sortRankingMode = (sortRankingMode + 1) % 3;
+  updateSortBtn();
+  if (sortRankingMode !== 2 && Object.keys(acRankings).length === 0) {
+    await loadRankings();
+  }
+  filterAC();
 }
 
 if (document.readyState === 'loading') {
@@ -518,6 +556,10 @@ function renderACGrid() {
     const wifiLabel = ac.wifi === 'Yes' ? 'WiFi incluido' : ac.wifi === 'Optional' ? 'WiFi opcional' : 'WiFi universal';
     const warYears = ac.warranty && ac.warranty.includes('3') ? 'Garantia 3 anos' : 'Garantia 1 ano';
     const kitLabel = `Kit de instalacion ${ac.installation_kit}`;
+    const rankCount = window.RankingRepo ? (acRankings[window.RankingRepo.modelKey(ac.brand_model)] || 0) : 0;
+    const rankBadge = (sortRankingMode !== 2 && rankCount > 0)
+      ? `<span class="ranking-badge"><i class="fas fa-fire"></i> ${rankCount}</span>`
+      : '';
     return `
     <div class="ac-card ${isSelected ? 'selected' : ''}" id="accard-${origIdx}">
       <div class="ac-header">
@@ -528,7 +570,10 @@ function renderACGrid() {
           <div class="ac-brand">${displayName}</div>
           <div class="ac-type">${ac.type}</div>
         </div>
-        <span class="ac-badge ${refBadge}">${ac.refrigerant}</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          <span class="ac-badge ${refBadge}">${ac.refrigerant}</span>
+          ${rankBadge}
+        </div>
       </div>
       <div class="btu-label">Capacidad BTU</div>
       <div class="btu-options">
@@ -627,6 +672,15 @@ function filterAC() {
     if (btu && !ac.capacities.find(c => c.btu_capacity === btu)) return false;
     return true;
   });
+
+  if (sortRankingMode !== 2 && window.RankingRepo) {
+    filteredAC.sort((a, b) => {
+      const aCount = acRankings[window.RankingRepo.modelKey(a.brand_model)] || 0;
+      const bCount = acRankings[window.RankingRepo.modelKey(b.brand_model)] || 0;
+      return sortRankingMode === 0 ? bCount - aCount : aCount - bCount;
+    });
+  }
+
   renderACGrid();
 }
 
@@ -869,6 +923,9 @@ function goToStep(n) {
   if (n === 2) {
     preloadInstallationsFromEquipment();
     renderServiceChip();
+  }
+  if (n === 1 && sortRankingMode !== 2) {
+    loadRankings().then(() => filterAC());
   }
   window.scrollTo(0,0);
 }

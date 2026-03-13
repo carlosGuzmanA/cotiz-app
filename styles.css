@@ -319,6 +319,49 @@
   .filter-select:focus { border-color: var(--accent); }
   .filter-select option { background: var(--surface); }
 
+  /* POPULAR FILTER */
+  .popular-filter {
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .popular-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-dim);
+    font-size: 12px;
+    font-family: 'Lato', sans-serif;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+  }
+  .popular-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .popular-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .popular-btn.active i { color: #fff; }
+  /* RANKING BADGE en cards */
+  .ranking-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-radius: 10px;
+    padding: 2px 8px;
+    font-weight: 700;
+  }
+  .ranking-badge i { font-size: 10px; }
+
   /* AC CARDS */
   .ac-grid { display: flex; flex-direction: column; gap: 10px; }
 

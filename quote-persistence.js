@@ -62,6 +62,11 @@
         window.ClientRepo.syncClientForQuote(auth.user.uid, auth.idToken, payload.client, result.id).catch(function() {});
       }
 
+      // Sync AC ranking counters in background (fire-and-forget)
+      if (window.RankingRepo && payload.equipmentSelections && payload.equipmentSelections.length) {
+        window.RankingRepo.incrementAcRankings(auth.user.uid, auth.idToken, payload.equipmentSelections).catch(function() {});
+      }
+
       if (!silent) {
         const label = status === 'issued' ? 'emitida' : 'guardada';
         showToastSafe(`Cotización ${label} correctamente`, 'success');

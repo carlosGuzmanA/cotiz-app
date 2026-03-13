@@ -96,7 +96,15 @@
         <option value="R32">R32</option>
         <option value="R410">R410</option>
       </select>
+
+       <button class="popular-btn" id="btnSortPopular" onclick="toggleSortByPopular()">
+        <i class="fas fa-fire"></i> Más cotizados
+      </button>
     </div>
+
+    <!-- <div class="popular-filter">
+     
+    </div> -->
 
     <div class="results-count" id="resultsCount"></div>
     <div class="ac-grid" id="acGrid">
@@ -500,6 +508,7 @@
 <script src="firebase-auth.js"></script>
 <script src="quotes-repo.js"></script>
 <script src="client-repo.js"></script>
+<script src="ranking-repo.js"></script>
 <script src="app.js"></script>
 <script src="quote-persistence.js"></script>
 </body>
