@@ -1388,10 +1388,6 @@ async function generatePDF() {
   showToast('PDF generado correctamente', 'success');
 }
 
-let _sharePdfBlob = null;
-let _sharePdfFileName = null;
-let _shareText = null;
-
 async function sharePDF() {
   showToast('Generando PDF…', 'info');
   let doc;
@@ -1401,74 +1397,22 @@ async function sharePDF() {
     showToast('Error al generar el PDF', 'error');
     return;
   }
-  _sharePdfFileName = `${quoteNumber}.pdf`;
-  _sharePdfBlob = doc.output('blob');
+  const fileName = `${quoteNumber}.pdf`;
+  const blob = doc.output('blob');
   const clientName = document.getElementById('clientName').value || '';
   const total = document.getElementById('grandTotal').textContent || '0';
   const quoteNum = document.getElementById('sumQuoteNum').textContent || quoteNumber;
-  _shareText = `Hola! Adjunto la cotización *${quoteNum}* para ${clientName}.\nTotal: *$${total}*`;
-  document.getElementById('shareSheet').classList.add('active');
-}
-
-function closeShareSheet() {
-  document.getElementById('shareSheet').classList.remove('active');
-}
-
-function _downloadSharePdf() {
-  if (!_sharePdfBlob || !_sharePdfFileName) return;
-  const url = URL.createObjectURL(_sharePdfBlob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = _sharePdfFileName;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-}
-
-function shareToWhatsApp() {
-  closeShareSheet();
-  const file = new File([_sharePdfBlob], _sharePdfFileName, { type: 'application/pdf' });
+  const shareText = `Cotización ${quoteNum} — ${clientName}\nTotal: $${total}`;
+  const file = new File([blob], fileName, { type: 'application/pdf' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    navigator.share({ title: _sharePdfFileName, text: _shareText, files: [file] }).catch(e => {
-      if (e.name !== 'AbortError') {
-        window.open(`https://wa.me/?text=${encodeURIComponent(_shareText)}`, '_blank', 'noopener');
-        _downloadSharePdf();
-      }
-    });
-    return;
-  }
-  window.open(`https://wa.me/?text=${encodeURIComponent(_shareText)}`, '_blank', 'noopener');
-  _downloadSharePdf();
-  showToast('PDF descargado — adjúntalo en WhatsApp', 'info');
-}
-
-function shareToEmail() {
-  closeShareSheet();
-  const quoteNum = document.getElementById('sumQuoteNum').textContent || quoteNumber;
-  const subject = encodeURIComponent(`Cotización ${quoteNum}`);
-  const body = encodeURIComponent(_shareText.replace(/\*/g, '') + '\n\nAdjunto el PDF de la cotización.');
-  window.location.href = `mailto:?subject=${subject}&body=${body}`;
-  _downloadSharePdf();
-  showToast('PDF descargado — adjúntalo al correo', 'info');
-}
-
-function shareToSMS() {
-  closeShareSheet();
-  const body = encodeURIComponent(_shareText.replace(/\*/g, ''));
-  window.location.href = `sms:?body=${body}`;
-}
-
-async function shareNative() {
-  closeShareSheet();
-  const file = new File([_sharePdfBlob], _sharePdfFileName, { type: 'application/pdf' });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ title: _sharePdfFileName, text: _shareText, files: [file] }); return; }
+    try { await navigator.share({ title: fileName, text: shareText, files: [file] }); return; }
     catch (e) { if (e.name === 'AbortError') return; }
   }
   if (navigator.share) {
-    try { await navigator.share({ title: _sharePdfFileName, text: _shareText }); return; }
+    try { await navigator.share({ title: fileName, text: shareText }); return; }
     catch (e) { if (e.name === 'AbortError') return; }
   }
-  _downloadSharePdf();
+  doc.save(fileName);
   showToast('PDF descargado', 'success');
 }
 
