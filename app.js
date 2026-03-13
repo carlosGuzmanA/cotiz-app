@@ -440,23 +440,8 @@ async function getNextQuoteSequenceFromFirebase(datePart) {
 async function generateQuoteNumber() {
   const d = new Date();
   const datePart = getQuoteDatePart(d);
-
-  // Fallback inmediato para no dejar la UI sin numero.
-  const localNext = readLocalQuoteCounter(datePart) + 1;
-  writeLocalQuoteCounter(datePart, localNext);
-  setQuoteNumberValue(buildQuoteNumber(datePart, localNext));
-
-  // Si hay sesion + acceso a repo, ajustar al consecutivo real de Firebase.
-  try {
-    const firebaseNext = await getNextQuoteSequenceFromFirebase(datePart);
-    if (firebaseNext) {
-      writeLocalQuoteCounter(datePart, firebaseNext);
-      setQuoteNumberValue(buildQuoteNumber(datePart, firebaseNext));
-    }
-  } catch (e) {
-    // Mantiene el consecutivo local cuando Firebase no esta disponible.
-  }
-
+  const rand = Math.floor(Math.random() * 9000) + 1000;
+  setQuoteNumberValue(`CL-${datePart}-${rand}`);
   return quoteNumber;
 }
 

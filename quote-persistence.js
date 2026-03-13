@@ -115,21 +115,40 @@
     showToastSafe('Cotización cargada para edición', 'success');
   }
 
+  function showSavePrompt() {
+    return new Promise(function(resolve) {
+      var modal = document.getElementById('savePromptModal');
+      if (!modal) { resolve('continue'); return; }
+      modal.classList.add('open');
+      var loginBtn = document.getElementById('savePromptLogin');
+      var continueBtn = document.getElementById('savePromptContinue');
+      function cleanup() { modal.classList.remove('open'); }
+      if (loginBtn) loginBtn.onclick = function() { cleanup(); resolve('login'); };
+      if (continueBtn) continueBtn.onclick = function() { cleanup(); resolve('continue'); };
+      modal.onclick = function(e) { if (e.target === modal) { cleanup(); resolve('continue'); } };
+    });
+  }
+
   function patchGeneratePdfForAutosave() {
     if (typeof window.generatePDF !== 'function') return;
     if (window.generatePDF.__patchedWithPersistence) return;
 
     const original = window.generatePDF;
     window.generatePDF = async function patchedGeneratePDF() {
+      const auth = await getAuthContext(false);
+      if (!auth) {
+        const choice = await showSavePrompt();
+        if (choice === 'login') { openLoginModal(); return; }
+        await original();
+        return;
+      }
       let saved = null;
       try {
         saved = await persistCurrentQuote('issued', { requireAuth: false, silent: true });
       } catch (e) {
         saved = null;
       }
-
       await original();
-
       if (saved) {
         showToastSafe('PDF generado y cotización guardada', 'success');
       }
@@ -144,6 +163,13 @@
 
     const original = window.sharePDF;
     window.sharePDF = async function patchedSharePDF() {
+      const auth = await getAuthContext(false);
+      if (!auth) {
+        const choice = await showSavePrompt();
+        if (choice === 'login') { openLoginModal(); return; }
+        await original();
+        return;
+      }
       try {
         await persistCurrentQuote('issued', { requireAuth: false, silent: true });
       } catch (e) {

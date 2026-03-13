@@ -60,6 +60,21 @@
     justify-content: center;
     font-size: 18px;
   }
+  .logo-menu-wrap { position: relative; }
+  .logo-menu-btn {
+    flex-direction: column;
+    gap: 5px;
+    padding: 0 8px;
+    cursor: pointer;
+    outline: none;
+    font-size: 0;
+  }
+  .logo-menu-btn span {
+    display: block;
+    width: 18px;
+    height: 1.5px;
+    background: var(--gold);
+  }
   .logo-text {
     font-family: 'Cormorant Garamond', serif;
     font-size: 22px;
@@ -108,7 +123,7 @@
   .hamburger-menu {
     position: absolute;
     top: calc(100% + 8px);
-    right: 0;
+    left: 0;
     min-width: 190px;
     background: var(--surface);
     border: 1px solid var(--border);

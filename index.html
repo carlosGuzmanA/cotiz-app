@@ -17,19 +17,20 @@
 <!-- HEADER -->
 <div class="app-header">
   <div class="logo">
-    <div class="logo-icon"><i class="fas fa-snowflake"></i></div>
+    <div class="logo-menu-wrap">
+      <button id="btnHamburgerMenu" class="logo-icon logo-menu-btn" type="button" aria-expanded="false" aria-label="Abrir menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="hamburger-menu" id="hamburgerMenu" style="display:none;">
+        <button id="menuLoginAction" class="hamburger-item" type="button">Iniciar sesión</button>
+        <button id="menuOpenHistory" class="hamburger-item" type="button" disabled>Ver historial</button>
+        <button id="menuOpenClients" class="hamburger-item" type="button" disabled>Ver clientes</button>
+        <div id="menuSessionText" class="hamburger-session">Sin sesión</div>
+      </div>
+    </div>
     <div class="logo-text">Cotiza<span>Clima</span></div>
   </div>
   <div class="header-actions">
-    <button id="btnHamburgerMenu" class="hamburger-btn" type="button" aria-expanded="false" aria-label="Abrir menu">
-      <span></span><span></span><span></span>
-    </button>
-    <div class="hamburger-menu" id="hamburgerMenu" style="display:none;">
-      <button id="menuLoginAction" class="hamburger-item" type="button">Iniciar sesión</button>
-      <button id="menuOpenHistory" class="hamburger-item" type="button" disabled>Ver historial</button>
-      <button id="menuOpenClients" class="hamburger-item" type="button" disabled>Ver clientes</button>
-      <div id="menuSessionText" class="hamburger-session">Sin sesión</div>
-    </div>
     <div id="fbStatusDot" title="Sin conexión Firebase — usando datos demo" style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.25);flex-shrink:0;transition:background 0.4s;"></div>
     <div style="font-size:11px; font-family:'DM Mono',monospace; color:rgba(255,255,255,0.55); letter-spacing:0.5px;" id="quoteNumHeader"></div>
   </div>
@@ -353,6 +354,21 @@
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+
+<!-- SAVE PROMPT MODAL -->
+<div class="modal-overlay" id="savePromptModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="fas fa-cloud-arrow-up"></i> Guardar cotización</div>
+    <p class="notes-hint" style="margin-bottom:20px; font-size:13px; line-height:1.6;">Inicia sesión para guardar esta cotización en el historial y registrar el cliente automáticamente.</p>
+    <button class="btn btn-primary" id="savePromptLogin" style="width:100%;margin-bottom:10px">
+      <i class="fas fa-right-to-bracket"></i> Iniciar sesión y guardar
+    </button>
+    <button class="btn btn-secondary" id="savePromptContinue" style="width:100%">
+      Continuar sin guardar
+    </button>
+  </div>
+</div>
 
 <!-- LOGIN MODAL -->
 <div class="modal-overlay" id="loginModal">
