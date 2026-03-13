@@ -1,9 +1,36 @@
 (function() {
   const PENDING_QUOTE_STORAGE_KEY = 'cotiz_pending_quote_v1';
 
-  function $(id) {
-    return document.getElementById(id);
-  }
+  // ── Estado del ciclo de vida ──────────────────────────────
+  const STATUS_CONFIG = {
+    draft:     { label: 'Borrador',    icon: 'fa-file-pen',        cls: 'status-draft'      },
+    issued:    { label: 'Emitida',     icon: 'fa-paper-plane',     cls: 'status-issued'     },
+    accepted:  { label: 'Aceptada',    icon: 'fa-circle-check',    cls: 'status-accepted'   },
+    scheduled: { label: 'Programada',  icon: 'fa-calendar-check',  cls: 'status-scheduled'  },
+    completed: { label: 'Finalizada',  icon: 'fa-flag-checkered',  cls: 'status-completed'  },
+    warranty:  { label: 'Garantía',    icon: 'fa-shield-halved',   cls: 'status-warranty'   }
+  };
+
+  // Transiciones permitidas
+  const TRANSITIONS = {
+    draft:     ['issued'],
+    issued:    ['accepted'],
+    accepted:  ['scheduled'],
+    scheduled: ['completed'],
+    completed: ['warranty'],
+    warranty:  []
+  };
+
+  // Etiqueta del botón de avance
+  const TRANSITION_LABEL = {
+    issued:    'Marcar emitida',
+    accepted:  'Cliente aceptó',
+    scheduled: 'Programar fecha',
+    completed: 'Marcar finalizada',
+    warranty:  'Programar garantía'
+  };
+
+  function $(id) { return document.getElementById(id); }
 
   function fmtNum(n) {
     return Math.round(Number(n || 0)).toLocaleString('es-CL');
@@ -34,12 +61,7 @@
     evt.preventDefault();
     const email = $('loginEmail').value.trim();
     const password = $('loginPassword').value;
-
-    if (!email || !password) {
-      showStatus('Completa correo y contraseña.', true);
-      return;
-    }
-
+    if (!email || !password) { showStatus('Completa correo y contraseña.', true); return; }
     try {
       await window.FirebaseAuthService.signIn(email, password);
       showStatus('Sesión iniciada.', false);
@@ -64,6 +86,41 @@
     return 'https://waze.com/ul?q=' + encodeURIComponent(parts.join(', ')) + '&navigate=yes';
   }
 
+  function statusBadge(status) {
+    const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+    return `<span class="status-badge ${cfg.cls}"><i class="fas ${cfg.icon}"></i> ${cfg.label}</span>`;
+  }
+
+  function scheduledDateLine(item) {
+    const lines = [];
+    if (item.scheduledDate) {
+      const d = new Date(item.scheduledDate);
+      lines.push(`<div class="quote-scheduled-line"><i class="fas fa-calendar-day"></i> Instalación: <strong>${d.toLocaleString('es-CL', {dateStyle:'medium', timeStyle:'short'})}</strong></div>`);
+    }
+    if (item.completedAt) {
+      const d = new Date(item.completedAt);
+      lines.push(`<div class="quote-scheduled-line"><i class="fas fa-flag-checkered"></i> Finalizada: <strong>${d.toLocaleDateString('es-CL', {dateStyle:'medium'})}</strong></div>`);
+    }
+    if (item.warrantyDate) {
+      const d = new Date(item.warrantyDate);
+      const isPast = d < new Date();
+      lines.push(`<div class="quote-scheduled-line${isPast?' expired':''}"><i class="fas fa-shield-halved"></i> Garantía hasta: <strong>${d.toLocaleDateString('es-CL', {dateStyle:'medium'})}</strong>${isPast?' — Vencida':''}</div>`);
+    }
+    return lines.join('');
+  }
+
+  function nextTransitionButton(item) {
+    const status = item.status || 'draft';
+    const nexts = TRANSITIONS[status] || [];
+    if (!nexts.length) return '';
+    const next = nexts[0];
+    const needsDate = next === 'scheduled' || next === 'warranty';
+    const dataDate = needsDate ? `data-needs-date="1"` : '';
+    return `<button class="quotes-btn action-btn" data-action="advance" data-id="${item.id}" data-next="${next}" ${dataDate} title="${TRANSITION_LABEL[next]}">
+      <i class="fas ${STATUS_CONFIG[next].icon}"></i> ${TRANSITION_LABEL[next]}
+    </button>`;
+  }
+
   function quoteItemTemplate(item) {
     const client = item.client || {};
     const clientName = client.name || 'Sin nombre';
@@ -72,26 +129,30 @@
     const status = item.status || 'draft';
     const phone = client.phone ? client.phone.trim() : '';
     const wazeUrl = buildWazeUrl(client);
-    const callBtn = phone
-      ? `<a class="quotes-btn secondary icon-btn" href="tel:${phone.replace(/\s/g, '')}" title="Llamar a ${clientName}"><i class="fas fa-phone"></i></a>`
-      : '';
-    const wazeBtn = wazeUrl
-      ? `<a class="quotes-btn secondary icon-btn" href="${wazeUrl}" target="_blank" rel="noopener noreferrer" title="Navegar con Waze"><i class="fas fa-route"></i></a>`
-      : '';
+    const callBtn  = phone   ? `<a class="quotes-btn secondary icon-btn" href="tel:${phone.replace(/\s/g,'')}" title="Llamar"><i class="fas fa-phone"></i></a>` : '';
+    const wazeBtn  = wazeUrl ? `<a class="quotes-btn secondary icon-btn" href="${wazeUrl}" target="_blank" rel="noopener noreferrer" title="Waze"><i class="fas fa-route"></i></a>` : '';
+    const advanceBtn = nextTransitionButton(item);
 
-    return `<div class="quote-item" data-id="${item.id}">
+    return `<div class="quote-item status-border-${status}" data-id="${item.id}">
       <div class="quote-head">
         <div>
           <div class="quote-num">${item.quoteNumber || item.id}</div>
-          <div class="quote-meta">Actualizada: ${updated} · Estado: ${status}</div>
+          <div class="quote-meta">Actualizada: ${updated}</div>
         </div>
-        <div class="quote-total">${total}</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          ${statusBadge(status)}
+          <div class="quote-total">${total}</div>
+        </div>
       </div>
-      <div class="quote-client">Cliente: ${clientName}</div>
-      <div class="quote-actions">
-        <button class="quotes-btn icon-btn" data-action="open" data-id="${item.id}" title="Abrir y editar"><i class="fas fa-pen-to-square"></i></button>
-        <button class="quotes-btn secondary icon-btn" data-action="duplicate" data-id="${item.id}" title="Duplicar"><i class="fas fa-copy"></i></button>
-        ${callBtn}${wazeBtn}
+      <div class="quote-client"><i class="fas fa-user" style="opacity:.5;margin-right:4px"></i>${clientName}</div>
+      ${scheduledDateLine(item)}
+      ${advanceBtn ? `<div class="quote-advance-row">${advanceBtn}</div>` : ''}
+      <div class="quote-actions-row">
+        <div class="quote-actions-group">
+          <button class="quotes-btn icon-btn" data-action="open" data-id="${item.id}" title="Abrir y editar"><i class="fas fa-pen-to-square"></i></button>
+          <button class="quotes-btn secondary icon-btn" data-action="duplicate" data-id="${item.id}" title="Duplicar"><i class="fas fa-copy"></i></button>
+          ${callBtn}${wazeBtn}
+        </div>
         <button class="quotes-btn danger icon-btn" data-action="delete" data-id="${item.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
       </div>
     </div>`;
@@ -104,32 +165,19 @@
 
   function getQuoteYearFromNumber(quoteNumber) {
     const normalized = String(quoteNumber || '').trim().toUpperCase();
-    const currentFmt = normalized.match(/^CL-(\d{4})-(\d{4,})$/);
-    if (currentFmt) return currentFmt[1];
-
-    // Compatibilidad con formato antiguo COT-YYYYMMDD-####
-    const legacyFmt = normalized.match(/^COT-(\d{8})-(\d{4,})$/);
-    if (legacyFmt) return legacyFmt[1].slice(0, 4);
-
+    const m = normalized.match(/^CL-(\d{4})-(\d{4,})$/);
+    if (m) return m[1];
+    const l = normalized.match(/^COT-(\d{8})-(\d{4,})$/);
+    if (l) return l[1].slice(0, 4);
     return String(new Date().getFullYear());
   }
 
   function parseQuoteSequenceByYear(quoteNumber, year) {
-    const normalized = String(quoteNumber || '').trim().toUpperCase();
-
-    const currentFmt = normalized.match(/^CL-(\d{4})-(\d{4,})$/);
-    if (currentFmt) {
-      if (String(year) !== currentFmt[1]) return 0;
-      return Number(currentFmt[2] || 0) || 0;
-    }
-
-    const legacyFmt = normalized.match(/^COT-(\d{8})-(\d{4,})$/);
-    if (legacyFmt) {
-      const legacyYear = legacyFmt[1].slice(0, 4);
-      if (String(year) !== legacyYear) return 0;
-      return Number(legacyFmt[2] || 0) || 0;
-    }
-
+    const n = String(quoteNumber || '').trim().toUpperCase();
+    const m = n.match(/^CL-(\d{4})-(\d{4,})$/);
+    if (m) return String(year) !== m[1] ? 0 : Number(m[2]) || 0;
+    const l = n.match(/^COT-(\d{8})-(\d{4,})$/);
+    if (l) return String(year) !== l[1].slice(0,4) ? 0 : Number(l[2]) || 0;
     return 0;
   }
 
@@ -141,12 +189,10 @@
     const { user, idToken } = await requireAuthContext();
     const list = await window.QuotesRepo.listQuotes(user.uid, idToken);
     const container = $('quoteList');
-
     if (!list.length) {
       container.innerHTML = '<div class="quote-item">No hay cotizaciones guardadas.</div>';
       return;
     }
-
     container.innerHTML = list.map(quoteItemTemplate).join('');
   }
 
@@ -161,25 +207,18 @@
     const { user, idToken } = await requireAuthContext();
     const quote = await window.QuotesRepo.getQuote(user.uid, idToken, id);
     if (!quote) throw new Error('No se encontró para duplicar.');
-
     const targetYear = getQuoteYearFromNumber(quote.quoteNumber);
     const allQuotes = await window.QuotesRepo.listQuotes(user.uid, idToken);
     const maxSeq = (allQuotes || []).reduce((max, item) => {
       const seq = parseQuoteSequenceByYear(item && item.quoteNumber, targetYear);
       return seq > max ? seq : max;
     }, 0);
-    const nextQuoteNumber = buildQuoteNumber(targetYear, maxSeq + 1);
-
     const clone = {
-      ...quote,
-      id: undefined,
-      activeQuoteId: null,
-      status: 'draft',
-      quoteNumber: nextQuoteNumber,
-      createdAt: Date.now(),
-      updatedAt: Date.now()
+      ...quote, id: undefined, activeQuoteId: null, status: 'draft',
+      quoteNumber: buildQuoteNumber(targetYear, maxSeq + 1),
+      createdAt: Date.now(), updatedAt: Date.now(),
+      scheduledDate: null, completedAt: null, warrantyDate: null
     };
-
     await window.QuotesRepo.saveQuote(user.uid, idToken, clone, null);
     showStatus('Cotización duplicada.', false);
     await loadQuotes();
@@ -188,23 +227,119 @@
   async function deleteQuote(id) {
     const ok = window.confirm('¿Eliminar esta cotización? Esta acción no se puede deshacer.');
     if (!ok) return;
-
     const { user, idToken } = await requireAuthContext();
     await window.QuotesRepo.deleteQuote(user.uid, idToken, id);
     showStatus('Cotización eliminada.', false);
     await loadQuotes();
   }
 
+  // ── Modal de fecha ────────────────────────────────────────
+  let _pendingAdvance = null;
+
+  function openScheduleModal(id, nextStatus) {
+    _pendingAdvance = { id, nextStatus };
+    const modal = $('scheduleModal');
+    const title = $('scheduleModalTitle');
+    const hint  = $('scheduleModalHint');
+    const datePart = $('scheduleModalDatePart');
+    const timePart = $('scheduleModalTimePart');
+    const timeGroup = $('scheduleTimeGroup');
+
+    // Fecha mínima: hoy
+    const today = new Date().toISOString().slice(0, 10);
+    datePart.min = today;
+
+    if (nextStatus === 'scheduled') {
+      title.textContent = 'Programar instalación';
+      hint.textContent  = 'Selecciona la fecha y hora de la visita de instalación.';
+      timeGroup.style.display = '';
+      datePart.value = '';
+      timePart.value = '09:00';
+    } else if (nextStatus === 'warranty') {
+      title.textContent = 'Visita de garantía';
+      hint.textContent  = 'Agenda la visita de garantía (sin costo, dentro de 6 meses).';
+      timeGroup.style.display = '';
+      // Sugerir 3 meses adelante
+      const suggested = new Date();
+      suggested.setMonth(suggested.getMonth() + 3);
+      datePart.value = suggested.toISOString().slice(0, 10);
+      // Fecha máxima: 6 meses
+      const maxDate = new Date();
+      maxDate.setMonth(maxDate.getMonth() + 6);
+      datePart.max = maxDate.toISOString().slice(0, 10);
+      timePart.value = '09:00';
+    } else {
+      datePart.value = '';
+      timePart.value = '09:00';
+    }
+
+    modal.classList.add('open');
+  }
+
+  function closeScheduleModal() {
+    _pendingAdvance = null;
+    $('scheduleModal').classList.remove('open');
+    $('scheduleModalDatePart').value = '';
+    $('scheduleModalTimePart').value = '09:00';
+    if ($('scheduleModalDatePart').max) $('scheduleModalDatePart').max = '';
+  }
+
+  async function confirmSchedule() {
+    if (!_pendingAdvance) return;
+    const { id, nextStatus } = _pendingAdvance;
+    const dateVal = $('scheduleModalDatePart').value;
+    const timeVal = $('scheduleModalTimePart').value || '09:00';
+    if (!dateVal) { alert('Por favor selecciona una fecha.'); return; }
+    const ts = new Date(`${dateVal}T${timeVal}`).getTime();
+    if (isNaN(ts)) { alert('Fecha inválida.'); return; }
+    closeScheduleModal();
+    await advanceStatus(id, nextStatus, ts);
+  }
+
+  async function advanceStatus(id, nextStatus, scheduledTs) {
+    try {
+      const { user, idToken } = await requireAuthContext();
+      const extra = {};
+
+      if (nextStatus === 'scheduled') {
+        extra.scheduledDate = scheduledTs || null;
+      } else if (nextStatus === 'completed') {
+        extra.completedAt = Date.now();
+        // Auto-calcular límite de garantía: 6 meses
+        const warrantyEnd = new Date();
+        warrantyEnd.setMonth(warrantyEnd.getMonth() + 6);
+        extra.warrantyExpiry = warrantyEnd.getTime();
+      } else if (nextStatus === 'warranty') {
+        extra.warrantyDate = scheduledTs || null;
+      }
+
+      await window.QuotesRepo.updateQuoteStatus(user.uid, idToken, id, nextStatus, extra);
+      showStatus(`Estado actualizado: ${STATUS_CONFIG[nextStatus].label}`, false);
+      await loadQuotes();
+    } catch (e) {
+      showStatus(e.message || 'Error al actualizar estado.', true);
+    }
+  }
+
   async function onListClick(evt) {
-    const btn = evt.target.closest('button[data-action]');
+    const btn = evt.target.closest('button[data-action], a[data-action]');
     if (!btn) return;
     const action = btn.dataset.action;
     const id = btn.dataset.id;
 
     try {
-      if (action === 'open') await openQuote(id);
+      if (action === 'open')      await openQuote(id);
       if (action === 'duplicate') await duplicateQuote(id);
-      if (action === 'delete') await deleteQuote(id);
+      if (action === 'delete')    await deleteQuote(id);
+      if (action === 'advance') {
+        const next = btn.dataset.next;
+        const needsDate = btn.dataset.needsDate === '1';
+        if (needsDate) {
+          openScheduleModal(id, next);
+        } else {
+          await advanceStatus(id, next, null);
+        }
+      }
     } catch (e) {
       showStatus(e.message || 'Error al ejecutar acción.', true);
     }
@@ -213,12 +348,7 @@
   async function bootstrap() {
     const user = window.FirebaseAuthService.getCurrentUser();
     const token = await window.FirebaseAuthService.getValidIdToken();
-
-    if (!user || !token) {
-      setAuthUi(false, '');
-      return;
-    }
-
+    if (!user || !token) { setAuthUi(false, ''); return; }
     setAuthUi(true, user.email || '');
     try {
       await loadQuotes();
@@ -233,7 +363,9 @@
     $('btnLogout').addEventListener('click', doLogout);
     $('btnBackApp').addEventListener('click', () => { window.location.href = 'index.html'; });
     $('quoteList').addEventListener('click', onListClick);
-
+    $('btnScheduleConfirm').addEventListener('click', confirmSchedule);
+    $('btnScheduleCancel').addEventListener('click', closeScheduleModal);
+    $('scheduleModal').addEventListener('click', e => { if (e.target === $('scheduleModal')) closeScheduleModal(); });
     await bootstrap();
   });
 })();

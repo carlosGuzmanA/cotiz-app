@@ -82,10 +82,29 @@
     return true;
   }
 
+  async function updateQuoteStatus(uid, idToken, quoteId, status, extraFields) {
+    const patch = {
+      status,
+      updatedAt: Date.now(),
+      ...(extraFields || {})
+    };
+    // PATCH: GET + PUT para no pisar campos existentes
+    const current = await request(`quotes/${uid}/${quoteId}`, idToken, { method: 'GET' });
+    if (!current) throw new Error('Cotización no encontrada.');
+    const merged = { ...current, ...patch };
+    await request(`quotes/${uid}/${quoteId}`, idToken, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(merged)
+    });
+    return merged;
+  }
+
   window.QuotesRepo = {
     listQuotes,
     getQuote,
     saveQuote,
-    deleteQuote
+    deleteQuote,
+    updateQuoteStatus
   };
 })();

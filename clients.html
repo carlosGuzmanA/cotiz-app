@@ -13,14 +13,20 @@
   <main class="quotes-shell">
 
     <div class="quotes-topbar">
-      <div>
+      <button id="btnBackApp" class="quotes-nav-back" type="button" title="Volver a la app">
+        <i class="fas fa-arrow-left"></i>
+      </button>
+      <div class="quotes-topbar-center">
         <h1 class="quotes-title">Clientes</h1>
-        <p class="quotes-sub">Consulta clientes guardados y sus cotizaciones asociadas.</p>
+        <p class="quotes-sub">Directorio de clientes</p>
       </div>
-      <div class="quotes-actions">
-        <button id="btnBackApp" class="quotes-btn secondary" type="button">Volver a la app</button>
-        <button id="btnBackHistory" class="quotes-btn secondary" type="button">Historial</button>
-        <button id="btnLogout" class="quotes-btn danger" type="button">Cerrar sesión</button>
+      <div style="display:flex;gap:8px;flex-shrink:0;">
+        <button id="btnBackHistory" class="quotes-nav-action" type="button" title="Ver historial">
+          <i class="fas fa-clock-rotate-left"></i>
+        </button>
+        <button id="btnLogout" class="quotes-nav-logout" type="button" title="Cerrar sesión">
+          <i class="fas fa-right-from-bracket"></i>
+        </button>
       </div>
     </div>
 
