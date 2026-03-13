@@ -338,8 +338,8 @@
       <button class="btn btn-pdf" onclick="generatePDF()" title="Generar y descargar PDF">
         <i class="fas fa-file-pdf"></i> Generar PDF
       </button>
-      <button class="btn btn-whatsapp" onclick="shareViaWhatsApp()" title="Compartir por WhatsApp">
-        <i class="fab fa-whatsapp"></i> WhatsApp
+      <button class="btn btn-share" onclick="sharePDF()" title="Compartir cotización">
+        <i class="fas fa-share-nodes"></i> Compartir
       </button>
     </div>
     <div class="btn-row btn-row-icons" style="margin-top:10px">
@@ -353,6 +353,33 @@
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+
+<!-- SHARE SHEET -->
+<div class="share-overlay" id="shareSheet" onclick="if(event.target===this)closeShareSheet()">
+  <div class="share-sheet-panel">
+    <div class="modal-handle"></div>
+    <div class="share-sheet-title">Compartir cotización</div>
+    <div class="share-app-grid">
+      <button class="share-app-btn" onclick="shareToWhatsApp()">
+        <span class="share-app-icon" style="background:#25D366"><i class="fab fa-whatsapp"></i></span>
+        <span class="share-app-label">WhatsApp</span>
+      </button>
+      <button class="share-app-btn" onclick="shareToEmail()">
+        <span class="share-app-icon" style="background:#4285F4"><i class="fas fa-envelope"></i></span>
+        <span class="share-app-label">Correo</span>
+      </button>
+      <button class="share-app-btn" onclick="shareToSMS()">
+        <span class="share-app-icon" style="background:#5C6BC0"><i class="fas fa-message"></i></span>
+        <span class="share-app-label">Mensajes</span>
+      </button>
+      <button class="share-app-btn" onclick="shareNative()">
+        <span class="share-app-icon" style="background:#455A64"><i class="fas fa-share-nodes"></i></span>
+        <span class="share-app-label">Más apps</span>
+      </button>
+    </div>
+    <button class="share-sheet-cancel" onclick="closeShareSheet()">Cancelar</button>
+  </div>
+</div>
 
 <!-- LOGIN MODAL -->
 <div class="modal-overlay" id="loginModal">
