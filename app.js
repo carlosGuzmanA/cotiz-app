@@ -95,6 +95,8 @@ let quoteNumber = '';
 let toastTimer = null;
 let repairQty = 1;
 let repairUnitValue = 10000;
+let instalacionUnitValue = 100000;
+let mantencionUnitValue = 30000;
 let serviceQtyMap = { instalacion: 0, mantencion: 0 };
 let activeQuoteId = null;
 let acRankings = {};
@@ -132,13 +134,20 @@ function updateStep1NextButton() {
   btn.style.opacity = hasItems ? '1' : '0.4';
 }
 
+function getEquipCount() {
+  return getSelectedEquipmentItems().reduce((sum, item) => sum + item.qty, 0);
+}
+
 function preloadInstallationsFromEquipment() {
-  const equipCount = getSelectedEquipmentItems().reduce((sum, item) => sum + item.qty, 0);
+  const equipCount = getEquipCount();
   if (equipCount === 0) {
     serviceQtyMap.instalacion = 0;
   } else if ((serviceQtyMap.instalacion || 0) === 0) {
     // Precarga por defecto: 1 instalacion por cada equipo agregado.
     serviceQtyMap.instalacion = equipCount;
+  } else {
+    // Clamp por si el usuario quitó equipos después de haber puesto instalaciones
+    serviceQtyMap.instalacion = Math.min(serviceQtyMap.instalacion, equipCount);
   }
   updateMultiServiceInputs();
   updateStep2NextButton();
@@ -688,22 +697,75 @@ function filterAC() {
 // RENDER SERVICE GRID
 // ============================================================
 function renderServiceGrid() {
-  document.getElementById('serviceGrid').innerHTML = SERVICES.map(s => `
-    ${(() => {
-      const qty = Math.max(0, serviceQtyMap[s.id] || 0);
-      const displayPrice = s.id === 'reparacion'
-        ? repairQty * repairUnitValue
-        : ((isMultiService(s.id)) ? qty * s.price : s.price);
-      const isActive = isMultiService(s.id) ? qty > 0 : selectedService === s.id;
-      return `
-    <div class="service-card ${isActive ? 'selected' : ''}" onclick="selectService('${s.id}')">
-      <div class="service-icon"><i class="fas ${s.icon}"></i></div>
-      <div class="service-name">${s.name}</div>
-      <div class="service-price">${displayPrice > 0 ? '$'+fmtNum(displayPrice) : (isMultiService(s.id) ? 'No agregado' : 'Sin costo')}</div>
-    </div>
-  `;
-    })()}
-  `).join('');
+  const equipCount = getEquipCount();
+  document.getElementById('serviceGrid').innerHTML = SERVICES.map(s => {
+    const qty = Math.max(0, serviceQtyMap[s.id] || 0);
+    const isActive = isMultiService(s.id) ? qty > 0 : selectedService === s.id;
+    const atInstCap = s.id === 'instalacion' && equipCount > 0 && qty >= equipCount;
+
+    let displayPrice;
+    if (s.id === 'reparacion') displayPrice = repairQty * repairUnitValue;
+    else if (s.id === 'instalacion') displayPrice = qty * instalacionUnitValue;
+    else if (s.id === 'mantencion') displayPrice = qty * mantencionUnitValue;
+    else if (isMultiService(s.id)) displayPrice = qty * s.price;
+    else displayPrice = s.price;
+
+    const priceHtml = displayPrice > 0
+      ? `$${fmtNum(displayPrice)}`
+      : (isMultiService(s.id) ? `<span class="svc-tap-hint">toca para agregar</span>` : 'Sin costo');
+
+    const topStyle = atInstCap ? ' style="pointer-events:none"' : '';
+
+    let inlineControls = '';
+    if (isMultiService(s.id) && isActive) {
+      const plusDisabled = atInstCap ? 'disabled' : '';
+      const unitHtml = s.id === 'instalacion' ? `
+        <div class="svc-unit-row">
+          <div class="svc-unit-label">Valor por instalación</div>
+          <input type="number" class="svc-unit-input" value="${instalacionUnitValue}"
+            min="0" step="1000" oninput="updateInstalacionValueInline(this.value)">
+        </div>` : s.id === 'mantencion' ? `
+        <div class="svc-unit-row">
+          <div class="svc-unit-label">Valor por mantención</div>
+          <input type="number" class="svc-unit-input" value="${mantencionUnitValue}"
+            min="0" step="1000" oninput="updateMantencionValueInline(this.value)">
+        </div>` : '';
+      inlineControls = `
+        <div class="svc-inline-controls">
+          <div class="svc-counter">
+            <button class="svc-counter-btn" onclick="decrementService('${s.id}')">&#8722;</button>
+            <span class="svc-counter-val">${qty}</span>
+            <button class="svc-counter-btn" onclick="selectService('${s.id}')" ${plusDisabled}>+</button>
+          </div>${unitHtml}
+        </div>`;
+    } else if (s.id === 'reparacion' && isActive) {
+      inlineControls = `
+        <div class="svc-inline-controls">
+          <div class="svc-repair-row">
+            <div class="svc-repair-field">
+              <div class="svc-unit-label">Cantidad</div>
+              <input type="number" id="repairQty" class="svc-unit-input" value="${repairQty}"
+                min="1" step="1" oninput="updateRepairServiceValue()">
+            </div>
+            <div class="svc-repair-field">
+              <div class="svc-unit-label">Valor unitario</div>
+              <input type="number" id="repairUnitValue" class="svc-unit-input" value="${repairUnitValue}"
+                min="0" step="1000" oninput="updateRepairServiceValue()">
+            </div>
+          </div>
+        </div>`;
+    }
+
+    return `
+    <div class="service-card ${isActive ? 'selected' : ''}" id="svc-card-${s.id}">
+      <div class="svc-card-top" onclick="selectService('${s.id}')"${topStyle}>
+        <div class="service-icon"><i class="fas ${s.icon}"></i></div>
+        <div class="service-name">${s.name}${atInstCap ? ' <span class="svc-cap-hint">máx</span>' : ''}</div>
+        <div class="service-price" id="svc-price-${s.id}">${priceHtml}</div>
+      </div>
+      ${inlineControls}
+    </div>`;
+  }).join('');
 }
 
 function isMultiService(id) {
@@ -722,11 +784,15 @@ function updateStep2NextButton() {
 
 function selectService(id) {
   if (isMultiService(id)) {
+    if (id === 'instalacion') {
+      const equipCount = getEquipCount();
+      if (equipCount > 0 && (serviceQtyMap.instalacion || 0) >= equipCount) return;
+    }
     serviceQtyMap[id] = Math.max(0, (serviceQtyMap[id] || 0) + 1);
     updateMultiServiceInputs();
     renderServiceGrid();
     updateStep2NextButton();
-    showToast(`${id === 'instalacion' ? 'Instalaciones' : 'Mantenciones'}: ${serviceQtyMap[id]}`, 'success');
+    buildSummary();
     return;
   }
 
@@ -734,62 +800,75 @@ function selectService(id) {
   toggleRepairInputs();
   renderServiceGrid();
   updateStep2NextButton();
-  showToast('Servicio seleccionado', 'success');
+  buildSummary();
+}
+
+function decrementService(id) {
+  if (!isMultiService(id)) return;
+  serviceQtyMap[id] = Math.max(0, (serviceQtyMap[id] || 0) - 1);
+  updateMultiServiceInputs();
+  renderServiceGrid();
+  updateStep2NextButton();
+  buildSummary();
 }
 
 function updateMultiServiceInputs() {
-  const instInput = document.getElementById('serviceQtyInstInput');
-  const mantInput = document.getElementById('serviceQtyMantInput');
-  if (instInput) instInput.value = Math.max(0, serviceQtyMap.instalacion || 0);
-  if (mantInput) mantInput.value = Math.max(0, serviceQtyMap.mantencion || 0);
   updateServiceQtyPreview();
 }
 
 function updateServiceQtyPreview() {
   const preview = document.getElementById('serviceQtyPreview');
-  const instSvc = SERVICES.find(s => s.id === 'instalacion');
+  if (!preview) return;
   const mantSvc = SERVICES.find(s => s.id === 'mantencion');
-  if (!preview || !instSvc || !mantSvc) return;
-  const instTotal = (serviceQtyMap.instalacion || 0) * instSvc.price;
-  const mantTotal = (serviceQtyMap.mantencion || 0) * mantSvc.price;
-  preview.textContent = `Instalación: $${fmtNum(instTotal)} · Mantención: $${fmtNum(mantTotal)}`;
+  const parts = [];
+  const instQty = serviceQtyMap.instalacion || 0;
+  const mantQty = serviceQtyMap.mantencion || 0;
+  if (instQty > 0) parts.push(`${instQty} instalación${instQty !== 1 ? 'es' : ''} · $${fmtNum(instQty * instalacionUnitValue)}`);
+  if (mantQty > 0) parts.push(`${mantQty} mantención${mantQty !== 1 ? 'es' : ''} · $${fmtNum(mantQty * mantencionUnitValue)}`);
+  preview.textContent = parts.join('   |   ');
+  preview.style.display = parts.length ? 'block' : 'none';
+}
+
+function updateInstalacionValueInline(val) {
+  instalacionUnitValue = Math.max(0, parseFloat(val) || 0);
+  const qty = serviceQtyMap.instalacion || 0;
+  const priceEl = document.getElementById('svc-price-instalacion');
+  if (priceEl) priceEl.textContent = qty > 0 ? `$${fmtNum(qty * instalacionUnitValue)}` : '';
+  updateServiceQtyPreview();
+  buildSummary();
+}
+
+function updateMantencionValueInline(val) {
+  mantencionUnitValue = Math.max(0, parseFloat(val) || 0);
+  const qty = serviceQtyMap.mantencion || 0;
+  const priceEl = document.getElementById('svc-price-mantencion');
+  if (priceEl) priceEl.textContent = qty > 0 ? `$${fmtNum(qty * mantencionUnitValue)}` : '';
+  updateServiceQtyPreview();
+  buildSummary();
 }
 
 function updateServiceQtyValue() {
-  const instInput = document.getElementById('serviceQtyInstInput');
-  const mantInput = document.getElementById('serviceQtyMantInput');
-  serviceQtyMap.instalacion = Math.max(0, parseInt((instInput && instInput.value) || '0', 10) || 0);
-  serviceQtyMap.mantencion = Math.max(0, parseInt((mantInput && mantInput.value) || '0', 10) || 0);
+  // Mantención qty is now set directly in state (no DOM input).
+  // Called from importQuoteSnapshot for backwards compat.
   updateMultiServiceInputs();
   renderServiceGrid();
   updateStep2NextButton();
 }
 
 function toggleRepairInputs() {
-  const card = document.getElementById('repairConfigCard');
-  if (!card) return;
-  const isRepair = selectedService === 'reparacion';
-  card.style.display = isRepair ? 'block' : 'none';
-  if (isRepair) {
-    updateRepairServiceValue();
-  }
+  // Repair inputs are now rendered inline inside the service card.
 }
 
 function updateRepairServiceValue() {
   const qtyEl = document.getElementById('repairQty');
   const unitEl = document.getElementById('repairUnitValue');
-  const preview = document.getElementById('repairPreview');
-
   repairQty = Math.max(1, parseInt((qtyEl && qtyEl.value) || '1', 10) || 1);
   repairUnitValue = Math.max(0, parseFloat((unitEl && unitEl.value) || '0') || 0);
-
-  if (qtyEl) qtyEl.value = repairQty;
-  if (unitEl) unitEl.value = repairUnitValue;
-  if (preview) preview.textContent = `Total reparación: $${fmtNum(repairQty * repairUnitValue)}`;
-
-  if (selectedService === 'reparacion') {
-    renderServiceGrid();
-  }
+  // Update price display directly without re-rendering grid (avoids losing input focus)
+  const priceEl = document.getElementById('svc-price-reparacion');
+  if (priceEl) priceEl.textContent = `$${fmtNum(repairQty * repairUnitValue)}`;
+  buildSummary();
+  recalcTotal();
 }
 
 function getCurrentServiceValues(svc) {
@@ -809,7 +888,10 @@ function getSelectedServiceItems() {
     const svc = SERVICES.find(s => s.id === id);
     const qty = Math.max(0, serviceQtyMap[id] || 0);
     if (svc && qty > 0) {
-      items.push({ svc, qty, unitPrice: svc.price, totalPrice: qty * svc.price });
+      const unitPrice = id === 'instalacion' ? instalacionUnitValue
+                       : id === 'mantencion' ? mantencionUnitValue
+                       : svc.price;
+      items.push({ svc, qty, unitPrice, totalPrice: qty * unitPrice });
     }
   });
 
@@ -1513,6 +1595,8 @@ function exportQuoteSnapshot(status = 'draft') {
         instalacion: Number(serviceQtyMap.instalacion || 0),
         mantencion: Number(serviceQtyMap.mantencion || 0)
       },
+      instalacionUnitValue: Number(instalacionUnitValue || 100000),
+      mantencionUnitValue: Number(mantencionUnitValue || 30000),
       repairQty: Number(repairQty || 1),
       repairUnitValue: Number(repairUnitValue || 0)
     },
@@ -1584,8 +1668,14 @@ function importQuoteSnapshot(snapshot) {
   // Restaurar servicios
   const svcSelection = snapshot.serviceSelection || {};
   const svcQtyMap = svcSelection.serviceQtyMap || {};
-  setVal('serviceQtyInstInput', Math.max(0, Number(svcQtyMap.instalacion || 0)));
-  setVal('serviceQtyMantInput', Math.max(0, Number(svcQtyMap.mantencion || 0)));
+  serviceQtyMap.instalacion = Math.max(0, Number(svcQtyMap.instalacion || 0));
+  serviceQtyMap.mantencion = Math.max(0, Number(svcQtyMap.mantencion || 0));
+  if (svcSelection.instalacionUnitValue !== undefined) {
+    instalacionUnitValue = Math.max(0, Number(svcSelection.instalacionUnitValue || 100000));
+  }
+  if (svcSelection.mantencionUnitValue !== undefined) {
+    mantencionUnitValue = Math.max(0, Number(svcSelection.mantencionUnitValue || 30000));
+  }
   updateServiceQtyValue();
 
   if (svcSelection.selectedService) {
@@ -1869,14 +1959,16 @@ function resetAll(options = {}) {
   updateStep1NextButton();
   repairQty = 1;
   repairUnitValue = 55000;
+  instalacionUnitValue = 100000;
+  mantencionUnitValue = 30000;
   serviceQtyMap = { instalacion: 0, mantencion: 0 };
   const repairQtyEl = document.getElementById('repairQty');
   const repairUnitEl = document.getElementById('repairUnitValue');
-  const serviceQtyInstEl = document.getElementById('serviceQtyInstInput');
+  const instalacionUnitEl = document.getElementById('instalacionUnitValue');
   const serviceQtyMantEl = document.getElementById('serviceQtyMantInput');
   if (repairQtyEl) repairQtyEl.value = 1;
   if (repairUnitEl) repairUnitEl.value = 55000;
-  if (serviceQtyInstEl) serviceQtyInstEl.value = 0;
+  if (instalacionUnitEl) instalacionUnitEl.value = 100000;
   if (serviceQtyMantEl) serviceQtyMantEl.value = 0;
   updateMultiServiceInputs();
   toggleRepairInputs();

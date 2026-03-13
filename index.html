@@ -122,35 +122,7 @@
       <!-- Filled by JS -->
     </div>
 
-    <div class="summary-card" id="serviceQtyConfigCard" style="margin-bottom:14px;">
-      <div class="summary-title">Servicios Combinables</div>
-      <div class="form-row">
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Cantidad de instalaciones</label>
-          <input type="number" class="form-input" id="serviceQtyInstInput" min="0" step="1" value="0" oninput="updateServiceQtyValue()">
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Cantidad de mantenciones</label>
-          <input type="number" class="form-input" id="serviceQtyMantInput" min="0" step="1" value="0" oninput="updateServiceQtyValue()">
-        </div>
-      </div>
-      <div class="notes-hint" id="serviceQtyPreview">Instalación: $0 · Mantención: $0</div>
-    </div>
-
-    <div class="summary-card" id="repairConfigCard" style="display:none; margin-bottom:14px;">
-      <div class="summary-title">Ajuste reparación</div>
-      <div class="form-row">
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Cantidad</label>
-          <input type="number" class="form-input" id="repairQty" min="1" step="1" value="1" oninput="updateRepairServiceValue()">
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Valor unitario</label>
-          <input type="number" class="form-input" id="repairUnitValue" min="0" step="1000" value="10000" oninput="updateRepairServiceValue()">
-        </div>
-      </div>
-      <div class="notes-hint" id="repairPreview">Total reparación: $10.000</div>
-    </div>
+    <div id="serviceQtyPreview" class="svc-summary-hint"></div>
 
     <div class="divider"></div>
     <div class="form-group">
