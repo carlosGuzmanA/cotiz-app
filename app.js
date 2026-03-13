@@ -1736,6 +1736,66 @@ window.CotizPersistenceBridge = {
 };
 
 // ============================================================
+// ============================================================
+// FIELD VALIDATION
+// ============================================================
+function autoFormatRut(input) {
+  const errorEl = document.getElementById('rutError');
+  // Conservar solo dígitos y K
+  const clean = input.value.replace(/[^0-9kK]/g, '').toUpperCase();
+
+  if (!clean) {
+    input.value = '';
+    input.classList.remove('input-invalid');
+    if (errorEl) errorEl.textContent = '';
+    return;
+  }
+
+  // Con un solo dígito no hay suficiente para separar cuerpo + verificador
+  if (clean.length === 1) {
+    input.value = clean;
+    input.classList.remove('input-invalid');
+    if (errorEl) errorEl.textContent = '';
+    return;
+  }
+
+  // El último caracter es siempre el dígito verificador
+  const verif = clean.slice(-1);
+  const body  = clean.slice(0, -1);
+
+  // Insertar puntos cada 3 dígitos del cuerpo desde la derecha
+  let formattedBody = '';
+  for (let i = 0; i < body.length; i++) {
+    if (i > 0 && (body.length - i) % 3 === 0) formattedBody += '.';
+    formattedBody += body[i];
+  }
+
+  input.value = `${formattedBody}-${verif}`;
+
+  // Mostrar error solo cuando el RUT parece completo (≥ 8 chars en limpio)
+  if (clean.length >= 8) {
+    const valid = /^\d{1,2}(\.\d{3})*-[\dK]$/i.test(input.value);
+    input.classList.toggle('input-invalid', !valid);
+    if (errorEl) errorEl.textContent = valid ? '' : 'RUT inválido. Ej: 12.345.678-9';
+  } else {
+    input.classList.remove('input-invalid');
+    if (errorEl) errorEl.textContent = '';
+  }
+}
+
+function validateEmailField(input) {
+  const val = input.value.trim();
+  const errorEl = document.getElementById('emailError');
+  if (!val) {
+    input.classList.remove('input-invalid');
+    if (errorEl) errorEl.textContent = '';
+    return;
+  }
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+  input.classList.toggle('input-invalid', !valid);
+  if (errorEl) errorEl.textContent = valid ? '' : 'Formato de correo inválido';
+}
+
 // GPS ADDRESS AUTOFILL
 // ============================================================
 function setGpsStatus(message, isError = false) {

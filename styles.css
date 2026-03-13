@@ -780,6 +780,24 @@
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(26,58,92,0.08);
   }
+  .form-input.input-invalid {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(139,46,15,0.08);
+  }
+  .field-hint-error {
+    font-size: 11px;
+    color: var(--red);
+    margin-top: 0;
+    min-height: 0;
+    max-height: 0;
+    overflow: hidden;
+    font-style: italic;
+    transition: max-height 0.2s ease, margin-top 0.2s ease;
+  }
+  .field-hint-error:not(:empty) {
+    max-height: 30px;
+    margin-top: 4px;
+  }
   .form-input::placeholder, .form-textarea::placeholder { color: var(--text-muted); font-style: italic; font-size: 13px; }
   .form-textarea { resize: vertical; min-height: 80px; }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
