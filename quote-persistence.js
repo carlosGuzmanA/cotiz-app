@@ -138,6 +138,23 @@
     window.generatePDF.__patchedWithPersistence = true;
   }
 
+  function patchSharePdfForAutosave() {
+    if (typeof window.sharePDF !== 'function') return;
+    if (window.sharePDF.__patchedWithPersistence) return;
+
+    const original = window.sharePDF;
+    window.sharePDF = async function patchedSharePDF() {
+      try {
+        await persistCurrentQuote('issued', { requireAuth: false, silent: true });
+      } catch (e) {
+        // persistencia silenciosa; no bloquear flujo de compartir
+      }
+      await original();
+    };
+
+    window.sharePDF.__patchedWithPersistence = true;
+  }
+
   function closeMenu() {
     const menu = $('hamburgerMenu');
     const trigger = $('btnHamburgerMenu');
@@ -309,6 +326,7 @@
 
   function initPersistenceFeatures() {
     patchGeneratePdfForAutosave();
+    patchSharePdfForAutosave();
     applyPendingQuoteIfAny();
     bindHeaderMenuEvents();
     updateAuthMenuState();
