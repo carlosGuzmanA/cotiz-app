@@ -32,6 +32,16 @@
     return { user, idToken };
   }
 
+  // Jerarquía de estados: a mayor índice, más avanzado
+  const STATUS_RANK = ['draft', 'issued', 'accepted', 'scheduled', 'completed', 'warranty'];
+
+  function effectiveStatus(requested, existing) {
+    const reqIdx = STATUS_RANK.indexOf(requested || 'draft');
+    const exiIdx = STATUS_RANK.indexOf(existing  || 'draft');
+    // Preservar el estado más avanzado (nunca retroceder)
+    return exiIdx > reqIdx ? existing : requested;
+  }
+
   async function persistCurrentQuote(status, options) {
     const opts = options || {};
     const requireAuth = !!opts.requireAuth;
@@ -53,7 +63,17 @@
       if (!auth) return null;
 
       const existingId = bridge.getActiveQuoteId();
-      const payload = bridge.exportQuoteSnapshot(status || 'draft');
+      // Nunca retroceder el estado: si la cotización ya tiene un estado más
+      // avanzado (ej. 'issued'), no lo sobreescribimos con 'draft'.
+      const currentStatus = typeof bridge.getActiveQuoteStatus === 'function'
+        ? bridge.getActiveQuoteStatus()
+        : 'draft';
+      const resolvedStatus = effectiveStatus(status || 'draft', currentStatus);
+      const payload = bridge.exportQuoteSnapshot(resolvedStatus);
+      // Actualizar el status en memoria para reflejar el estado guardado
+      if (typeof bridge.setActiveQuoteStatus === 'function') {
+        bridge.setActiveQuoteStatus(resolvedStatus);
+      }
       const result = await window.QuotesRepo.saveQuote(auth.user.uid, auth.idToken, payload, existingId || null);
       bridge.setActiveQuoteId(result.id);
 

@@ -99,6 +99,7 @@ let instalacionUnitValue = 100000;
 let mantencionUnitValue = 30000;
 let serviceQtyMap = { instalacion: 0, mantencion: 0 };
 let activeQuoteId = null;
+let activeQuoteStatus = 'draft';
 let acRankings = {};
 // 0 = más cotizados (desc), 1 = menos cotizados (asc), 2 = orden original
 let sortRankingMode = 0;
@@ -1687,6 +1688,7 @@ function importQuoteSnapshot(snapshot) {
 
   setActiveQuoteId(snapshot.id || snapshot.activeQuoteId || null);
   setQuoteNumberValue(snapshot.quoteNumber);
+  activeQuoteStatus = snapshot.status || 'draft';
 
   const client = snapshot.client || {};
   const setVal = (id, value) => {
@@ -1766,7 +1768,9 @@ window.CotizPersistenceBridge = {
   setActiveQuoteId,
   getQuoteNumberValue,
   setQuoteNumberValue,
-  refreshQuoteNumberAfterLogin
+  refreshQuoteNumberAfterLogin,
+  getActiveQuoteStatus: () => activeQuoteStatus,
+  setActiveQuoteStatus: (s) => { activeQuoteStatus = s || 'draft'; }
 };
 
 // ============================================================
@@ -2054,6 +2058,7 @@ function showToast(msg, type = 'success') {
 function resetAll(options = {}) {
   const skipQuoteNumber = !!options.skipQuoteNumber;
   activeQuoteId = null;
+  activeQuoteStatus = 'draft';
   selectedAC = null;
   selectedBTU = null;
   selectedEquipments = {};
