@@ -419,30 +419,63 @@ function writeLocalQuoteCounter(datePart, value) {
   } catch (e) {}
 }
 
-async function getNextQuoteSequenceFromFirebase(datePart) {
-  if (!window.FirebaseAuthService || !window.QuotesRepo) return null;
+// Marca si el número actual es provisional (sin sesión)
+let quoteNumberIsProvisional = false;
 
+async function getNextSequenceFromFirebase(datePart) {
+  if (!window.FirebaseAuthService || !window.QuotesRepo) return null;
   const user = window.FirebaseAuthService.getCurrentUser();
   if (!user || !user.uid) return null;
-
   const idToken = await window.FirebaseAuthService.getValidIdToken();
   if (!idToken) return null;
 
   const quotes = await window.QuotesRepo.listQuotes(user.uid, idToken);
-  const maxSequence = (quotes || []).reduce((max, q) => {
-    const seq = parseQuoteSequence(q && q.quoteNumber, datePart);
+  // Buscar el mayor correlativo de CUALQUIER año para evitar colisiones
+  const maxSeq = (quotes || []).reduce((max, q) => {
+    const num = String(q && q.quoteNumber || '').toUpperCase();
+    const m = num.match(/^CL-\d{4}-(\d{4,})$/);
+    const seq = m ? Number(m[1]) : 0;
     return seq > max ? seq : max;
   }, 0);
-
-  return maxSequence + 1;
+  return maxSeq + 1;
 }
 
 async function generateQuoteNumber() {
-  const d = new Date();
-  const datePart = getQuoteDatePart(d);
+  const datePart = getQuoteDatePart(new Date());
+
+  // Intentar obtener correlativo real desde Firebase
+  try {
+    const firebaseNext = await getNextSequenceFromFirebase(datePart);
+    if (firebaseNext !== null) {
+      setQuoteNumberValue(buildQuoteNumber(datePart, firebaseNext));
+      writeLocalQuoteCounter(datePart, firebaseNext);
+      quoteNumberIsProvisional = false;
+      return quoteNumber;
+    }
+  } catch (e) { /* sin sesión o Firebase no disponible */ }
+
+  // Sin sesión: número al azar provisional (evitar colisiones visuales)
   const rand = Math.floor(Math.random() * 9000) + 1000;
   setQuoteNumberValue(`CL-${datePart}-${rand}`);
+  quoteNumberIsProvisional = true;
   return quoteNumber;
+}
+
+// Llamar después de iniciar sesión para reemplazar el número provisional
+async function refreshQuoteNumberAfterLogin() {
+  if (!quoteNumberIsProvisional) return; // ya tiene un número real
+  const datePart = getQuoteDatePart(new Date());
+  try {
+    const firebaseNext = await getNextSequenceFromFirebase(datePart);
+    if (firebaseNext !== null) {
+      setQuoteNumberValue(buildQuoteNumber(datePart, firebaseNext));
+      writeLocalQuoteCounter(datePart, firebaseNext);
+      quoteNumberIsProvisional = false;
+      // Actualizar también el resumen si ya estaba visible
+      const sumEl = document.getElementById('sumQuoteNum');
+      if (sumEl && sumEl.textContent) sumEl.textContent = quoteNumber;
+    }
+  } catch (e) { /* mantener el provisional si falla */ }
 }
 
 function loadDemoData() {
@@ -1008,7 +1041,7 @@ function renderServiceChip() {
       <div class="chip-icon"><i class="fas fa-snowflake"></i></div>
       <div class="chip-info">
         <div class="chip-title">Equipos seleccionados: ${equipCount}</div>
-        <div class="chip-sub">${selectedItems.slice(0, 2).map(item => `${item.ac.brand_model} ${(item.btu/1000).toFixed(0)}K x${item.qty}`).join(' · ')}${selectedItems.length > 2 ? ' ...' : ''}</div>
+        <div class="chip-sub">${selectedItems.slice(0, 2).map(item => `${item.ac.marca ? item.ac.marca + ' ' : ''}${item.ac.brand_model} ${(item.btu/1000).toFixed(0)}K x${item.qty}`).join(' · ')}${selectedItems.length > 2 ? ' ...' : ''}</div>
       </div>
       <div>
         <div class="chip-price">$${fmtNum(equipTotal)}</div>
@@ -1044,7 +1077,7 @@ function buildSummary() {
   // Equipment
   if (selectedEquipItems.length > 0) {
     const modelTxt = selectedEquipItems
-      .map(item => `${item.ac.brand_model} ${(item.btu/1000).toFixed(0)}K x${item.qty}`)
+      .map(item => `${item.ac.marca ? item.ac.marca + ' ' : ''}${item.ac.brand_model} ${(item.btu/1000).toFixed(0)}K x${item.qty}`)
       .join(' + ');
     const btuTxt = selectedEquipItems
       .map(item => `${(item.btu/1000).toFixed(0)}K x${item.qty}`)
@@ -1732,7 +1765,8 @@ window.CotizPersistenceBridge = {
   getActiveQuoteId,
   setActiveQuoteId,
   getQuoteNumberValue,
-  setQuoteNumberValue
+  setQuoteNumberValue,
+  refreshQuoteNumberAfterLogin
 };
 
 // ============================================================

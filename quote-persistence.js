@@ -258,6 +258,10 @@
       await window.FirebaseAuthService.signIn(email, password);
       updateAuthMenuState();
       closeLoginModal();
+      // Actualizar correlativo si el número actual era provisional
+      if (window.CotizPersistenceBridge && typeof window.CotizPersistenceBridge.refreshQuoteNumberAfterLogin === 'function') {
+        window.CotizPersistenceBridge.refreshQuoteNumberAfterLogin().catch(function() {});
+      }
       showToastSafe('Sesión iniciada. Historial habilitado.', 'success');
     } catch (e) {
       const mapper = window.FirebaseAuthService.mapAuthError;
