@@ -82,6 +82,22 @@
       return 'https://waze.com/ul?q=' + encodeURIComponent(parts.join(', ')) + '&navigate=yes';
     }
 
+    // Evalúa el estado de alerta de garantía para un listado de cotizaciones.
+    // Retorna: 'expired' | 'soon' | 'active' | null
+    function warrantyAlert(quotes) {
+      var now = Date.now();
+      var SOON_MS = 15 * 24 * 60 * 60 * 1000; // 15 días
+      var result = null;
+      var priority = { expired: 3, soon: 2, active: 1 };
+      quotes.forEach(function(q) {
+        if (q.status !== 'warranty' || !q.warrantyDate) return;
+        var exp = Number(q.warrantyDate);
+        var level = exp < now ? 'expired' : (exp - now <= SOON_MS ? 'soon' : 'active');
+        if (!result || (priority[level] > priority[result])) result = level;
+      });
+      return result;
+    }
+
     function renderQuoteRow(q) {
       var total = (q.pricing && q.pricing.total) ? ('$' + fmtNum(q.pricing.total)) : '$0';
       var date = q.updatedAt ? new Date(q.updatedAt).toLocaleDateString('es-CL') : '-';
@@ -94,6 +110,14 @@
       var wazeBtn = wazeUrl
         ? '<a class="quotes-btn secondary icon-btn" href="' + wazeUrl + '" target="_blank" rel="noopener noreferrer" title="Navegar con Waze"><i class="fas fa-route"></i></a>'
         : '';
+
+      // Botón reprogramar garantía (solo en estado warranty)
+      var rescheduleBtn = '';
+      if (q.status === 'warranty') {
+        var wdLabel = q.warrantyDate ? new Date(q.warrantyDate).toLocaleDateString('es-CL', {dateStyle:'short'}) : 'Sin fecha';
+        rescheduleBtn = '<button class="quotes-btn secondary reschedule-btn" data-action="reschedule" data-id="' + q.id + '" data-warranty-date="' + (q.warrantyDate || '') + '" title="Reprogramar garantía"><i class="fas fa-calendar-pen"></i> Garantía: ' + wdLabel + '</button>';
+      }
+
       return '<div class="quote-item">' +
         '<div class="quote-head">' +
           '<div class="quote-head-left">' +
@@ -104,6 +128,7 @@
             '<div class="quote-total">' + total + '</div>' +
           '</div>' +
         '</div>' +
+        (rescheduleBtn ? '<div style="margin-top:8px">' + rescheduleBtn + '</div>' : '') +
         '<div class="quote-actions-row" style="margin-top:8px">' +
           '<div class="quote-actions-group">' +
             '<button class="quotes-btn icon-btn" data-action="open" data-id="' + q.id + '" title="Abrir y editar"><i class="fas fa-pen-to-square"></i></button>' +
@@ -194,6 +219,56 @@
       $('clientDetailModal').classList.remove('open');
     }
 
+    // ── Modal reprogramar garantía ──────────────────────────
+    var _rescheduleId = null;
+
+    function openRescheduleModal(quoteId, currentTs) {
+      _rescheduleId = quoteId;
+      var modal = $('rescheduleModal');
+      var today = new Date().toISOString().slice(0, 10);
+      var datePart = $('rescheduleDate');
+      var timePart = $('rescheduleTime');
+      datePart.min = today;
+      datePart.max = '';
+      // Precargar fecha actual si existe, si no hoy
+      if (currentTs) {
+        var d = new Date(currentTs);
+        datePart.value = d.toISOString().slice(0, 10);
+        timePart.value = d.toTimeString().slice(0, 5);
+      } else {
+        datePart.value = today;
+        timePart.value = '09:00';
+      }
+      modal.classList.add('open');
+      modal.onclick = function(e) { if (e.target === modal) closeRescheduleModal(); };
+    }
+
+    function closeRescheduleModal() {
+      _rescheduleId = null;
+      $('rescheduleModal').classList.remove('open');
+    }
+
+    async function confirmReschedule() {
+      if (!_rescheduleId) return;
+      var dateVal = $('rescheduleDate').value;
+      var timeVal = $('rescheduleTime').value || '09:00';
+      if (!dateVal) { alert('Selecciona una fecha.'); return; }
+      var ts = new Date(dateVal + 'T' + timeVal).getTime();
+      if (isNaN(ts)) { alert('Fecha inválida.'); return; }
+      try {
+        var user = window.FirebaseAuthService.getCurrentUser();
+        var idToken = await window.FirebaseAuthService.getValidIdToken();
+        await window.QuotesRepo.updateQuoteStatus(user.uid, idToken, _rescheduleId, 'warranty', { warrantyDate: ts });
+        // Actualizar en caché local
+        if (quoteById[_rescheduleId]) quoteById[_rescheduleId].warrantyDate = ts;
+        closeRescheduleModal();
+        renderFiltered($('clientsSearchInput').value);
+        showStatus('Garantía reprogramada.', false);
+      } catch (e) {
+        alert('Error al reprogramar: ' + (e.message || 'Error desconocido'));
+      }
+    }
+
     function renderClientCard(client, clientQuotes) {
       var count = clientQuotes.length;
       var phoneHtml = client.phone ? '<span class="client-detail-item">' + client.phone + '</span>' : '';
@@ -216,10 +291,23 @@
         ? '<a class="quotes-btn secondary icon-btn client-action-btn" href="' + wazeUrl + '" target="_blank" rel="noopener noreferrer" title="Navegar con Waze"><i class="fas fa-route"></i></a>'
         : '';
 
-      return '<div class="client-card" data-client-id="' + client.id + '">' +
+      // Alerta de garantía
+      var alert = warrantyAlert(clientQuotes);
+      var alertCls = alert ? ' client-card-warranty-' + alert : '';
+      var alertBadgeMap = {
+        expired: '<span class="warranty-badge warranty-badge-expired"><i class="fas fa-shield-halved"></i> Garantía vencida</span>',
+        soon:    '<span class="warranty-badge warranty-badge-soon"><i class="fas fa-shield-halved"></i> Garantía próxima</span>',
+        active:  '<span class="warranty-badge warranty-badge-active"><i class="fas fa-shield-halved"></i> En garantía</span>'
+      };
+      var alertBadge = alert ? alertBadgeMap[alert] : '';
+
+      return '<div class="client-card' + alertCls + '" data-client-id="' + client.id + '">' +
         '<div class="client-card-header">' +
           '<div class="client-card-info">' +
-            '<div class="client-card-name">' + (client.name || 'Sin nombre') + '</div>' +
+            '<div class="client-name-row">' +
+              '<div class="client-card-name">' + (client.name || 'Sin nombre') + '</div>' +
+              alertBadge +
+            '</div>' +
             '<div class="client-card-rut">' + (client.rut || 'Sin RUT') + '</div>' +
             '<div class="client-card-details">' + phoneHtml + emailHtml + locationHtml + '</div>' +
             '<div class="client-card-actions">' + callBtnCard + wazeBtnCard + '</div>' +
@@ -315,6 +403,15 @@
     }
 
     function onListClick(evt) {
+      // "Reprogramar garantía" button
+      var rescheduleBtn = evt.target.closest('button[data-action="reschedule"]');
+      if (rescheduleBtn) {
+        var rescheduleId = rescheduleBtn.dataset.id;
+        var currentDate = rescheduleBtn.dataset.warrantyDate ? Number(rescheduleBtn.dataset.warrantyDate) : null;
+        openRescheduleModal(rescheduleId, currentDate);
+        return;
+      }
+
       // "Ver detalle" button
       var detailBtn = evt.target.closest('button[data-action="detail"]');
       if (detailBtn) {
@@ -374,8 +471,35 @@
 
       bootstrap();
     });
+
+    // Exponer para onclick inline del modal
+    window.confirmReschedule  = confirmReschedule;
+    window.closeRescheduleModal = closeRescheduleModal;
   })();
   </script>
+  <!-- MODAL: REPROGRAMAR GARANTÍA -->
+  <div class="detail-overlay" id="rescheduleModal">
+    <div class="detail-sheet" style="max-height:60vh">
+      <div class="detail-handle"></div>
+      <div class="schedule-title">Reprogramar visita de garantía</div>
+      <p class="schedule-hint">Selecciona la nueva fecha y hora de la visita.</p>
+      <div class="schedule-fields">
+        <div class="schedule-field-group">
+          <label class="schedule-label"><i class="fas fa-calendar"></i> Fecha</label>
+          <input type="date" id="rescheduleDate" class="schedule-input">
+        </div>
+        <div class="schedule-field-group">
+          <label class="schedule-label"><i class="fas fa-clock"></i> Hora</label>
+          <input type="time" id="rescheduleTime" class="schedule-input" value="09:00">
+        </div>
+      </div>
+      <div class="schedule-actions">
+        <button class="quotes-btn schedule-confirm-btn" onclick="confirmReschedule()"><i class="fas fa-calendar-check"></i> Confirmar</button>
+        <button class="quotes-btn secondary" onclick="closeRescheduleModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: DETALLE COTIZACIÓN -->
   <div class="detail-overlay" id="clientDetailModal"></div>
 
