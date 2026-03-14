@@ -120,11 +120,8 @@
 
       var isLocked = ['accepted','scheduled','completed','warranty'].indexOf(q.status) !== -1;
       var editBtn = isLocked
-        ? '<button class="quotes-btn icon-btn" disabled title="Cotización bloqueada"><i class="fas fa-pen-to-square"></i></button>'
+        ? '<button class="quotes-btn icon-btn" disabled title="Edita los datos del cliente desde la card del cliente"><i class="fas fa-pen-to-square"></i></button>'
         : '<button class="quotes-btn icon-btn" data-action="open" data-id="' + q.id + '" title="Abrir y editar"><i class="fas fa-pen-to-square"></i></button>';
-      var partialEditBtn = isLocked
-        ? '<button class="quotes-btn secondary icon-btn" data-action="partial-edit" data-id="' + q.id + '" title="Editar cliente y observaciones"><i class="fas fa-user-pen"></i></button>'
-        : '';
 
       return '<div class="quote-item">' +
         '<div class="quote-head">' +
@@ -139,7 +136,7 @@
         (rescheduleBtn ? '<div style="margin-top:8px">' + rescheduleBtn + '</div>' : '') +
         '<div class="quote-actions-row" style="margin-top:8px">' +
           '<div class="quote-actions-group">' +
-            editBtn + partialEditBtn +
+            editBtn +
             '<button class="quotes-btn secondary icon-btn" data-action="detail" data-id="' + q.id + '" title="Ver detalle"><i class="fas fa-eye"></i></button>' +
             callBtn + wazeBtn +
           '</div>' +
@@ -256,59 +253,77 @@
       $('rescheduleModal').classList.remove('open');
     }
 
-    // ── Edición parcial de cliente ────────────────────────────
-    var _partialEditQuote = null;
+// ── Edición de cliente (actualiza todas sus cotizaciones) ────────
+    var _editingClient = null;
 
-    function openClientPartialEdit(quote) {
-      _partialEditQuote = quote;
-      var c = quote.client || {};
+    function openClientEdit(client) {
+      _editingClient = client;
       var setVal = function(id, val) { var el = $(id); if (el) el.value = val || ''; };
-      setVal('cpeClientName',    c.name);
-      setVal('cpeClientRut',     c.rut);
-      setVal('cpeClientPhone',   c.phone);
-      setVal('cpeClientEmail',   c.email);
-      setVal('cpeClientAddress', c.address);
-      setVal('cpeClientCity',    c.city);
-      setVal('cpeClientRegion',  c.region);
-      setVal('cpeNotes',         (quote.notes && (quote.notes.client || quote.notes.service)) || '');
+      setVal('cpeClientName',    client.name);
+      setVal('cpeClientRut',     client.rut);
+      setVal('cpeClientPhone',   client.phone);
+      setVal('cpeClientEmail',   client.email);
+      setVal('cpeClientAddress', client.address);
+      setVal('cpeClientCity',    client.city);
+      setVal('cpeClientRegion',  client.region);
+      setVal('cpeNotes',         client.notes || '');
       var modal = $('clientPartialEditModal');
       modal.classList.add('open');
-      modal.onclick = function(e) { if (e.target === modal) closeClientPartialEdit(); };
+      modal.onclick = function(e) { if (e.target === modal) closeClientEdit(); };
     }
 
-    function closeClientPartialEdit() {
-      _partialEditQuote = null;
+    function closeClientEdit() {
+      _editingClient = null;
       $('clientPartialEditModal').classList.remove('open');
     }
 
-    async function confirmClientPartialEdit() {
-      if (!_partialEditQuote) return;
+    async function confirmClientEdit() {
+      if (!_editingClient) return;
       var getVal = function(id) { var el = $(id); return el ? el.value.trim() : ''; };
+      var updatedFields = {
+        name:    getVal('cpeClientName'),
+        rut:     getVal('cpeClientRut'),
+        phone:   getVal('cpeClientPhone'),
+        email:   getVal('cpeClientEmail'),
+        address: getVal('cpeClientAddress'),
+        city:    getVal('cpeClientCity'),
+        region:  getVal('cpeClientRegion'),
+        notes:   getVal('cpeNotes')
+      };
       try {
         var user = window.FirebaseAuthService.getCurrentUser();
         var idToken = await window.FirebaseAuthService.getValidIdToken();
-        var merged = Object.assign({}, _partialEditQuote, {
-          client: Object.assign({}, _partialEditQuote.client || {}, {
-            name:    getVal('cpeClientName'),
-            rut:     getVal('cpeClientRut'),
-            phone:   getVal('cpeClientPhone'),
-            email:   getVal('cpeClientEmail'),
-            address: getVal('cpeClientAddress'),
-            city:    getVal('cpeClientCity'),
-            region:  getVal('cpeClientRegion')
-          }),
-          notes: Object.assign({}, _partialEditQuote.notes || {}, {
-            client:  getVal('cpeNotes'),
-            service: getVal('cpeNotes')
-          }),
-          updatedAt: Date.now()
-        });
-        await window.QuotesRepo.saveQuote(user.uid, idToken, merged, _partialEditQuote.id);
-        // Actualizar caché local
-        quoteById[_partialEditQuote.id] = merged;
-        closeClientPartialEdit();
+
+        // 1. Actualizar nodo del cliente en Firebase (usando su id como rutKey)
+        if (window.ClientRepo) {
+          var clientData = Object.assign({}, _editingClient, updatedFields);
+          await window.ClientRepo.saveClientWithId(user.uid, idToken, clientData, _editingClient.id);
+        }
+
+        // 2. Actualizar TODAS las cotizaciones asociadas a este cliente
+        var clientQuotes = quotesByClientId[_editingClient.id] || [];
+        var now = Date.now();
+        await Promise.all(clientQuotes.map(async function(q) {
+          var merged = Object.assign({}, q, {
+            client: Object.assign({}, q.client || {}, updatedFields),
+            updatedAt: now
+          });
+          await window.QuotesRepo.saveQuote(user.uid, idToken, merged, q.id);
+          quoteById[q.id] = merged;
+        }));
+
+        // 3. Actualizar caché de allClients
+        for (var i = 0; i < allClients.length; i++) {
+          if (allClients[i].id === _editingClient.id) {
+            allClients[i] = Object.assign({}, allClients[i], updatedFields);
+            break;
+          }
+        }
+
+        rebuildQuotesByClient();
+        closeClientEdit();
         renderFiltered($('clientsSearchInput').value);
-        showStatus('Datos del cliente actualizados.', false);
+        showStatus('Cliente actualizado en ' + clientQuotes.length + ' cotización(es).', false);
       } catch(e) {
         alert('Error al guardar: ' + (e.message || 'Error desconocido'));
       }
@@ -327,6 +342,7 @@
         await window.QuotesRepo.updateQuoteStatus(user.uid, idToken, _rescheduleId, 'warranty', { warrantyDate: ts });
         // Actualizar en caché local
         if (quoteById[_rescheduleId]) quoteById[_rescheduleId].warrantyDate = ts;
+        rebuildQuotesByClient();
         closeRescheduleModal();
         renderFiltered($('clientsSearchInput').value);
         showStatus('Garantía reprogramada.', false);
@@ -376,7 +392,9 @@
             '</div>' +
             '<div class="client-card-rut">' + (client.rut || 'Sin RUT') + '</div>' +
             '<div class="client-card-details">' + phoneHtml + emailHtml + locationHtml + '</div>' +
-            '<div class="client-card-actions">' + callBtnCard + wazeBtnCard + '</div>' +
+            '<div class="client-card-actions">' + callBtnCard + wazeBtnCard +
+              '<button class="quotes-btn secondary icon-btn client-action-btn" data-action="edit-client" data-client-id="' + client.id + '" title="Editar datos del cliente"><i class="fas fa-user-pen"></i></button>' +
+            '</div>' +
           '</div>' +
           '<button class="client-toggle-btn" data-client-id="' + client.id + '" aria-expanded="false">' +
             '<span class="client-quote-count">' + countLabel + '</span>' +
@@ -392,6 +410,18 @@
     var allClients = [];
     var quoteById = {};
     var quotesByClientId = {};
+
+    // Reconstruye quotesByClientId desde quoteById actualizado
+    function rebuildQuotesByClient() {
+      quotesByClientId = {};
+      allClients.forEach(function(c) {
+        var ids = Object.keys(c.quoteIds || {});
+        quotesByClientId[c.id] = ids
+          .map(function(id) { return quoteById[id]; })
+          .filter(Boolean)
+          .sort(function(a, b) { return Number(b.updatedAt || 0) - Number(a.updatedAt || 0); });
+      });
+    }
 
     function renderFiltered(query) {
       var q = (query || '').trim().toLowerCase();
@@ -469,12 +499,12 @@
     }
 
     function onListClick(evt) {
-      // "Editar cliente" button (partial edit)
-      var partialBtn = evt.target.closest('button[data-action="partial-edit"]');
-      if (partialBtn) {
-        var pid = partialBtn.dataset.id;
-        var pQuote = quoteById[pid];
-        if (pQuote) openClientPartialEdit(pQuote);
+      // "Editar cliente" button (desde card del cliente)
+      var editClientBtn = evt.target.closest('button[data-action="edit-client"]');
+      if (editClientBtn) {
+        var clientId = editClientBtn.dataset.clientId;
+        var clientObj = allClients.find(function(c) { return c.id === clientId; });
+        if (clientObj) openClientEdit(clientObj);
         return;
       }
 
@@ -547,10 +577,10 @@
       bootstrap();
     });
 
-    window.confirmReschedule      = confirmReschedule;
-    window.closeRescheduleModal   = closeRescheduleModal;
-    window.confirmClientPartialEdit = confirmClientPartialEdit;
-    window.closeClientPartialEdit   = closeClientPartialEdit;
+    window.confirmReschedule        = confirmReschedule;
+    window.closeRescheduleModal      = closeRescheduleModal;
+    window.confirmClientEdit         = confirmClientEdit;
+    window.closeClientEdit           = closeClientEdit;
   })();
   </script>
   <!-- MODAL: EDITAR CLIENTE / NOTAS -->
@@ -594,8 +624,8 @@
         </div>
       </div>
       <div class="schedule-actions">
-        <button class="quotes-btn schedule-confirm-btn" onclick="confirmClientPartialEdit()"><i class="fas fa-floppy-disk"></i> Guardar</button>
-        <button class="quotes-btn secondary" onclick="closeClientPartialEdit()">Cancelar</button>
+        <button class="quotes-btn schedule-confirm-btn" onclick="confirmClientEdit()"><i class="fas fa-floppy-disk"></i> Guardar</button>
+        <button class="quotes-btn secondary" onclick="closeClientEdit()">Cancelar</button>
       </div>
     </div>
   </div>
