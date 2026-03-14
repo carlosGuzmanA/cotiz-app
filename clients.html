@@ -70,12 +70,6 @@
       window.location.href = 'index.html';
     }
 
-    function statusLabel(status) {
-      if (status === 'issued') return 'Emitida';
-      if (status === 'draft') return 'Borrador';
-      return status || 'Borrador';
-    }
-
     function buildWazeUrl(obj) {
       var parts = [obj.address, obj.city, obj.region].filter(Boolean);
       if (!parts.length) return '';
@@ -98,48 +92,118 @@
       return result;
     }
 
+    var STATUS_CONFIG = {
+      draft:     { label: 'Borrador',   icon: 'fa-file-pen',       cls: 'status-draft'      },
+      issued:    { label: 'Emitida',    icon: 'fa-paper-plane',    cls: 'status-issued'     },
+      accepted:  { label: 'Aceptada',   icon: 'fa-circle-check',   cls: 'status-accepted'   },
+      scheduled: { label: 'Programada', icon: 'fa-calendar-check', cls: 'status-scheduled'  },
+      completed: { label: 'Finalizada', icon: 'fa-flag-checkered', cls: 'status-completed'  },
+      warranty:  { label: 'Garantía',   icon: 'fa-shield-halved',  cls: 'status-warranty'   }
+    };
+
+    var TRANSITIONS = {
+      draft:     ['issued'],
+      issued:    ['accepted'],
+      accepted:  ['scheduled'],
+      scheduled: ['completed'],
+      completed: ['warranty'],
+      warranty:  []
+    };
+
+    var TRANSITION_LABEL = {
+      issued:    'Marcar emitida',
+      accepted:  'Cliente aceptó',
+      scheduled: 'Programar fecha',
+      completed: 'Marcar finalizada',
+      warranty:  'Programar garantía'
+    };
+
+    function statusBadge(status) {
+      var cfg = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+      return '<span class="status-badge ' + cfg.cls + '"><i class="fas ' + cfg.icon + '"></i> ' + cfg.label + '</span>';
+    }
+
+    function scheduledDateLine(item) {
+      var lines = [];
+      if (item.scheduledDate) {
+        var d1 = new Date(item.scheduledDate);
+        lines.push('<div class="quote-scheduled-line"><i class="fas fa-calendar-day"></i> Instalación: <strong>' + d1.toLocaleString('es-CL', {dateStyle:'medium', timeStyle:'short'}) + '</strong></div>');
+      }
+      if (item.completedAt) {
+        var d2 = new Date(item.completedAt);
+        lines.push('<div class="quote-scheduled-line"><i class="fas fa-flag-checkered"></i> Finalizada: <strong>' + d2.toLocaleDateString('es-CL', {dateStyle:'medium'}) + '</strong></div>');
+      }
+      if (item.warrantyDate) {
+        var d3 = new Date(item.warrantyDate);
+        var isPast = d3 < new Date();
+        lines.push('<div class="quote-scheduled-line' + (isPast ? ' expired' : '') + '"><i class="fas fa-shield-halved"></i> Garantía hasta: <strong>' + d3.toLocaleDateString('es-CL', {dateStyle:'medium'}) + '</strong>' + (isPast ? ' — Vencida' : '') + '</div>');
+      }
+      return lines.join('');
+    }
+
+    function nextTransitionButton(item) {
+      var status = item.status || 'draft';
+      var nexts = TRANSITIONS[status] || [];
+      if (!nexts.length) return '';
+      var next = nexts[0];
+      var needsDate = (next === 'scheduled' || next === 'warranty');
+      var dataDate = needsDate ? 'data-needs-date="1"' : '';
+      var dataCompleted = item.completedAt ? 'data-completed-at="' + item.completedAt + '"' : '';
+      return '<button class="quotes-btn action-btn" data-action="advance" data-id="' + item.id + '" data-next="' + next + '" ' + dataDate + ' ' + dataCompleted + ' title="' + TRANSITION_LABEL[next] + '">' +
+        '<i class="fas ' + STATUS_CONFIG[next].icon + '"></i> ' + TRANSITION_LABEL[next] +
+        '</button>';
+    }
+
     function renderQuoteRow(q) {
-      var total = (q.pricing && q.pricing.total) ? ('$' + fmtNum(q.pricing.total)) : '$0';
-      var date = q.updatedAt ? new Date(q.updatedAt).toLocaleDateString('es-CL') : '-';
+      var status = q.status || 'draft';
       var client = q.client || {};
+      var total = (q.pricing && q.pricing.total) ? ('$' + fmtNum(q.pricing.total)) : '$0';
+      var updated = q.updatedAt ? new Date(q.updatedAt).toLocaleString('es-CL') : 'Sin fecha';
       var phone = client.phone ? client.phone.trim() : '';
       var wazeUrl = buildWazeUrl(client);
       var callBtn = phone
         ? '<a class="quotes-btn secondary icon-btn" href="tel:' + phone.replace(/\s/g, '') + '" title="Llamar"><i class="fas fa-phone"></i></a>'
         : '';
       var wazeBtn = wazeUrl
-        ? '<a class="quotes-btn secondary icon-btn" href="' + wazeUrl + '" target="_blank" rel="noopener noreferrer" title="Navegar con Waze"><i class="fas fa-route"></i></a>'
+        ? '<a class="quotes-btn secondary icon-btn" href="' + wazeUrl + '" target="_blank" rel="noopener noreferrer" title="Waze"><i class="fas fa-route"></i></a>'
         : '';
-
-      // Botón reprogramar garantía (solo en estado warranty)
-      var rescheduleBtn = '';
-      if (q.status === 'warranty') {
-        var wdLabel = q.warrantyDate ? new Date(q.warrantyDate).toLocaleDateString('es-CL', {dateStyle:'short'}) : 'Sin fecha';
-        rescheduleBtn = '<button class="quotes-btn secondary reschedule-btn" data-action="reschedule" data-id="' + q.id + '" data-warranty-date="' + (q.warrantyDate || '') + '" title="Reprogramar garantía"><i class="fas fa-calendar-pen"></i> Garantía: ' + wdLabel + '</button>';
-      }
-
-      var isLocked = ['accepted','scheduled','completed','warranty'].indexOf(q.status) !== -1;
+      var advanceBtn = nextTransitionButton(q);
+      var isLocked = ['accepted','scheduled','completed','warranty'].indexOf(status) !== -1;
       var editBtn = isLocked
-        ? '<button class="quotes-btn icon-btn" disabled title="Edita los datos del cliente desde la card del cliente"><i class="fas fa-pen-to-square"></i></button>'
+        ? '<button class="quotes-btn icon-btn" disabled title="Cotización bloqueada: edita los datos del cliente en esta sección"><i class="fas fa-pen-to-square"></i></button>'
         : '<button class="quotes-btn icon-btn" data-action="open" data-id="' + q.id + '" title="Abrir y editar"><i class="fas fa-pen-to-square"></i></button>';
 
-      return '<div class="quote-item">' +
+      // Botón reprogramar (instalación o garantía)
+      var rescheduleBtn = '';
+      if (status === 'scheduled') {
+        rescheduleBtn = '<button class="quotes-btn secondary action-btn" data-action="reschedule-install" data-id="' + q.id + '" data-scheduled-date="' + (q.scheduledDate || '') + '" title="Reprogramar fecha de instalación"><i class="fas fa-calendar-pen"></i> Reprogramar instalación</button>';
+      } else if (status === 'warranty') {
+        var wdLabel = q.warrantyDate ? new Date(q.warrantyDate).toLocaleDateString('es-CL', {dateStyle:'short'}) : 'Sin fecha';
+        rescheduleBtn = '<button class="quotes-btn secondary action-btn" data-action="reschedule-warranty" data-id="' + q.id + '" data-warranty-date="' + (q.warrantyDate || '') + '" title="Reprogramar visita de garantía"><i class="fas fa-calendar-pen"></i> Reprogramar garantía: ' + wdLabel + '</button>';
+      }
+
+      return '<div class="quote-item status-border-' + status + '" data-id="' + q.id + '">' +
         '<div class="quote-head">' +
           '<div class="quote-head-left">' +
             '<div class="quote-num">' + (q.quoteNumber || q.id) + '</div>' +
-            '<div class="quote-meta">' + date + ' &middot; ' + statusLabel(q.status) + '</div>' +
+            '<div class="quote-meta">Actualizada: ' + updated + '</div>' +
           '</div>' +
           '<div class="quote-head-right">' +
+            statusBadge(status) +
             '<div class="quote-total">' + total + '</div>' +
           '</div>' +
         '</div>' +
-        (rescheduleBtn ? '<div style="margin-top:8px">' + rescheduleBtn + '</div>' : '') +
-        '<div class="quote-actions-row" style="margin-top:8px">' +
+        scheduledDateLine(q) +
+        (advanceBtn    ? '<div class="quote-advance-row">' + advanceBtn    + '</div>' : '') +
+        (rescheduleBtn ? '<div class="quote-advance-row">' + rescheduleBtn + '</div>' : '') +
+        '<div class="quote-actions-row">' +
           '<div class="quote-actions-group">' +
             editBtn +
-            '<button class="quotes-btn secondary icon-btn" data-action="detail" data-id="' + q.id + '" title="Ver detalle"><i class="fas fa-eye"></i></button>' +
+            '<button class="quotes-btn secondary icon-btn" data-action="detail"    data-id="' + q.id + '" title="Ver detalle"><i class="fas fa-eye"></i></button>' +
+            '<button class="quotes-btn secondary icon-btn" data-action="duplicate" data-id="' + q.id + '" title="Duplicar"><i class="fas fa-copy"></i></button>' +
             callBtn + wazeBtn +
           '</div>' +
+          '<button class="quotes-btn danger icon-btn" data-action="delete" data-id="' + q.id + '" title="Eliminar"><i class="fas fa-trash"></i></button>' +
         '</div>' +
       '</div>';
     }
@@ -222,6 +286,172 @@
 
     function closeDetailModal() {
       $('clientDetailModal').classList.remove('open');
+    }
+
+    // ── Funciones de numeración de cotizaciones ───────────────
+    function getQuoteYearFromNumber(quoteNumber) {
+      var normalized = String(quoteNumber || '').trim().toUpperCase();
+      var m = normalized.match(/^CL-(\d{4})-(\d{4,})$/);
+      if (m) return m[1];
+      var l = normalized.match(/^COT-(\d{8})-(\d{4,})$/);
+      if (l) return l[1].slice(0, 4);
+      return String(new Date().getFullYear());
+    }
+
+    function parseQuoteSequenceByYear(quoteNumber, year) {
+      var n = String(quoteNumber || '').trim().toUpperCase();
+      var m = n.match(/^CL-(\d{4})-(\d{4,})$/);
+      if (m) return String(year) !== m[1] ? 0 : Number(m[2]) || 0;
+      var l = n.match(/^COT-(\d{8})-(\d{4,})$/);
+      if (l) return String(year) !== l[1].slice(0,4) ? 0 : Number(l[2]) || 0;
+      return 0;
+    }
+
+    function buildQuoteNumber(year, sequence) {
+      return 'CL-' + year + '-' + String(Math.max(1, Number(sequence) || 1)).padStart(4, '0');
+    }
+
+    // ── Recarga datos de cotizaciones desde Firebase ──────────
+    async function reloadQuotesData() {
+      var user = window.FirebaseAuthService.getCurrentUser();
+      var idToken = await window.FirebaseAuthService.getValidIdToken();
+      var quotes = await window.QuotesRepo.listQuotes(user.uid, idToken);
+      quoteById = {};
+      quotes.forEach(function(q) { quoteById[q.id] = q; });
+      rebuildQuotesByClient();
+      renderFiltered($('clientsSearchInput').value);
+    }
+
+    // ── Avance de estado ──────────────────────────────────────
+    var _pendingAdvance = null;
+
+    function openScheduleModal(id, nextStatus, completedAt, prefillTs) {
+      _pendingAdvance = { id: id, nextStatus: nextStatus };
+      var modal = $('clientsScheduleModal');
+      var title = $('clientsScheduleTitle');
+      var hint  = $('clientsScheduleHint');
+      var datePart = $('clientsScheduleDatePart');
+      var timePart = $('clientsScheduleTimePart');
+      var today = new Date().toISOString().slice(0, 10);
+      datePart.min = today;
+      datePart.max = '';
+      if (nextStatus === 'scheduled') {
+        title.textContent = prefillTs ? 'Reprogramar instalación' : 'Programar instalación';
+        hint.textContent  = prefillTs ? 'Selecciona la nueva fecha y hora de instalación.' : 'Selecciona la fecha y hora de la visita de instalación.';
+        if (prefillTs) {
+          var d = new Date(prefillTs);
+          datePart.value = d.toISOString().slice(0, 10);
+          timePart.value = d.toTimeString().slice(0, 5);
+        } else {
+          datePart.value = '';
+          timePart.value = '09:00';
+        }
+      } else if (nextStatus === 'warranty') {
+        if (prefillTs) {
+          title.textContent = 'Reprogramar visita de garantía';
+          hint.textContent  = 'Selecciona la nueva fecha y hora de la visita.';
+          var dw = new Date(prefillTs);
+          datePart.value = dw.toISOString().slice(0, 10);
+          timePart.value = dw.toTimeString().slice(0, 5);
+        } else {
+          title.textContent = 'Visita de garantía';
+          hint.textContent  = 'Agenda la visita de garantía (sin costo). Fecha sugerida: 6 meses desde la finalización.';
+          var base = completedAt ? new Date(completedAt) : new Date();
+          var suggested = new Date(base);
+          suggested.setMonth(suggested.getMonth() + 6);
+          datePart.value = suggested.toISOString().slice(0, 10);
+          datePart.max   = suggested.toISOString().slice(0, 10);
+          timePart.value = '09:00';
+        }
+      } else {
+        datePart.value = '';
+        timePart.value = '09:00';
+      }
+      modal.classList.add('open');
+    }
+
+    function closeScheduleModal() {
+      _pendingAdvance = null;
+      $('clientsScheduleModal').classList.remove('open');
+      $('clientsScheduleDatePart').value = '';
+      $('clientsScheduleTimePart').value = '09:00';
+      if ($('clientsScheduleDatePart').max) $('clientsScheduleDatePart').max = '';
+    }
+
+    async function confirmSchedule() {
+      if (!_pendingAdvance) return;
+      var id = _pendingAdvance.id;
+      var nextStatus = _pendingAdvance.nextStatus;
+      var dateVal = $('clientsScheduleDatePart').value;
+      var timeVal = $('clientsScheduleTimePart').value || '09:00';
+      if (!dateVal) { alert('Por favor selecciona una fecha.'); return; }
+      var ts = new Date(dateVal + 'T' + timeVal).getTime();
+      if (isNaN(ts)) { alert('Fecha inválida.'); return; }
+      closeScheduleModal();
+      await advanceStatus(id, nextStatus, ts);
+    }
+
+    async function advanceStatus(id, nextStatus, scheduledTs) {
+      try {
+        var user = window.FirebaseAuthService.getCurrentUser();
+        var idToken = await window.FirebaseAuthService.getValidIdToken();
+        var extra = {};
+        if (nextStatus === 'scheduled') {
+          extra.scheduledDate = scheduledTs || null;
+        } else if (nextStatus === 'completed') {
+          extra.completedAt = Date.now();
+          var warrantyEnd = new Date();
+          warrantyEnd.setMonth(warrantyEnd.getMonth() + 6);
+          extra.warrantyExpiry = warrantyEnd.getTime();
+        } else if (nextStatus === 'warranty') {
+          extra.warrantyDate = scheduledTs || null;
+        }
+        await window.QuotesRepo.updateQuoteStatus(user.uid, idToken, id, nextStatus, extra);
+        showStatus('Estado actualizado: ' + STATUS_CONFIG[nextStatus].label, false);
+        await reloadQuotesData();
+      } catch (e) {
+        showStatus(e.message || 'Error al actualizar estado.', true);
+      }
+    }
+
+    async function duplicateQuote(id) {
+      try {
+        var user = window.FirebaseAuthService.getCurrentUser();
+        var idToken = await window.FirebaseAuthService.getValidIdToken();
+        var quote = quoteById[id];
+        if (!quote) throw new Error('No se encontró la cotización.');
+        var targetYear = getQuoteYearFromNumber(quote.quoteNumber);
+        var allQuotes = Object.values(quoteById);
+        var maxSeq = allQuotes.reduce(function(max, item) {
+          var seq = parseQuoteSequenceByYear(item && item.quoteNumber, targetYear);
+          return seq > max ? seq : max;
+        }, 0);
+        var clone = Object.assign({}, quote, {
+          id: undefined, activeQuoteId: null, status: 'draft',
+          quoteNumber: buildQuoteNumber(targetYear, maxSeq + 1),
+          createdAt: Date.now(), updatedAt: Date.now(),
+          scheduledDate: null, completedAt: null, warrantyDate: null
+        });
+        await window.QuotesRepo.saveQuote(user.uid, idToken, clone, null);
+        showStatus('Cotización duplicada.', false);
+        await reloadQuotesData();
+      } catch (e) {
+        showStatus(e.message || 'Error al duplicar.', true);
+      }
+    }
+
+    async function deleteQuote(id) {
+      var ok = window.confirm('¿Eliminar esta cotización? Esta acción no se puede deshacer.');
+      if (!ok) return;
+      try {
+        var user = window.FirebaseAuthService.getCurrentUser();
+        var idToken = await window.FirebaseAuthService.getValidIdToken();
+        await window.QuotesRepo.deleteQuote(user.uid, idToken, id);
+        showStatus('Cotización eliminada.', false);
+        await reloadQuotesData();
+      } catch (e) {
+        showStatus(e.message || 'Error al eliminar.', true);
+      }
     }
 
     // ── Modal reprogramar garantía ──────────────────────────
@@ -498,7 +728,7 @@
       }
     }
 
-    function onListClick(evt) {
+    async function onListClick(evt) {
       // "Editar cliente" button (desde card del cliente)
       var editClientBtn = evt.target.closest('button[data-action="edit-client"]');
       if (editClientBtn) {
@@ -508,12 +738,52 @@
         return;
       }
 
+      // "Avanzar estado" button
+      var advanceBtn = evt.target.closest('button[data-action="advance"]');
+      if (advanceBtn) {
+        var advId = advanceBtn.dataset.id;
+        var next = advanceBtn.dataset.next;
+        var needsDate = advanceBtn.dataset.needsDate === '1';
+        if (needsDate) {
+          var completedAt = advanceBtn.dataset.completedAt ? Number(advanceBtn.dataset.completedAt) : null;
+          openScheduleModal(advId, next, completedAt, null);
+        } else {
+          await advanceStatus(advId, next, null);
+        }
+        return;
+      }
+
+      // "Reprogramar instalación" button
+      var rescheduleInstallBtn = evt.target.closest('button[data-action="reschedule-install"]');
+      if (rescheduleInstallBtn) {
+        var riId = rescheduleInstallBtn.dataset.id;
+        var prefillTs = rescheduleInstallBtn.dataset.scheduledDate ? Number(rescheduleInstallBtn.dataset.scheduledDate) : null;
+        openScheduleModal(riId, 'scheduled', null, prefillTs);
+        return;
+      }
+
       // "Reprogramar garantía" button
-      var rescheduleBtn = evt.target.closest('button[data-action="reschedule"]');
-      if (rescheduleBtn) {
-        var rescheduleId = rescheduleBtn.dataset.id;
-        var currentDate = rescheduleBtn.dataset.warrantyDate ? Number(rescheduleBtn.dataset.warrantyDate) : null;
-        openRescheduleModal(rescheduleId, currentDate);
+      var rescheduleWarrantyBtn = evt.target.closest('button[data-action="reschedule-warranty"]');
+      if (rescheduleWarrantyBtn) {
+        var rwId = rescheduleWarrantyBtn.dataset.id;
+        var rwPrefill = rescheduleWarrantyBtn.dataset.warrantyDate ? Number(rescheduleWarrantyBtn.dataset.warrantyDate) : null;
+        var rwQuote = quoteById[rwId];
+        var rwCompletedAt = rwQuote ? rwQuote.completedAt : null;
+        openScheduleModal(rwId, 'warranty', rwCompletedAt, rwPrefill);
+        return;
+      }
+
+      // "Duplicar" button
+      var duplicateBtn = evt.target.closest('button[data-action="duplicate"]');
+      if (duplicateBtn) {
+        await duplicateQuote(duplicateBtn.dataset.id);
+        return;
+      }
+
+      // "Eliminar" button
+      var deleteBtn = evt.target.closest('button[data-action="delete"]');
+      if (deleteBtn) {
+        await deleteQuote(deleteBtn.dataset.id);
         return;
       }
 
@@ -529,10 +799,10 @@
       // "Abrir y editar" button
       var openBtn = evt.target.closest('button[data-action="open"]');
       if (openBtn) {
-        var id = openBtn.dataset.id;
-        var quote = quoteById[id];
-        if (quote) {
-          navigateToEditorWithQuote(quote);
+        var openId = openBtn.dataset.id;
+        var openQuote = quoteById[openId];
+        if (openQuote) {
+          navigateToEditorWithQuote(openQuote);
         } else {
           showStatus('No se encontró la cotización.', true);
         }
@@ -540,10 +810,10 @@
       }
 
       // Toggle client accordion
-      var toggleBtn = evt.target.closest('button[data-client-id]');
+      var toggleBtn = evt.target.closest('button.client-toggle-btn');
       if (toggleBtn) {
-        var clientId = toggleBtn.dataset.clientId;
-        var panel = document.querySelector('[data-quotes-for="' + clientId + '"]');
+        var toggleClientId = toggleBtn.dataset.clientId;
+        var panel = document.querySelector('[data-quotes-for="' + toggleClientId + '"]');
         if (panel) {
           var isOpen = !panel.classList.contains('hidden');
           panel.classList.toggle('hidden', isOpen);
@@ -573,6 +843,9 @@
       });
 
       $('clientsListCard').addEventListener('click', onListClick);
+      $('btnClientsScheduleConfirm').addEventListener('click', confirmSchedule);
+      $('btnClientsScheduleCancel').addEventListener('click', closeScheduleModal);
+      $('clientsScheduleModal').addEventListener('click', function(e) { if (e.target === $('clientsScheduleModal')) closeScheduleModal(); });
 
       bootstrap();
     });
@@ -655,6 +928,29 @@
 
   <!-- MODAL: DETALLE COTIZACIÓN -->
   <div class="detail-overlay" id="clientDetailModal"></div>
+
+  <!-- MODAL: PROGRAMAR FECHA -->
+  <div class="schedule-overlay" id="clientsScheduleModal">
+    <div class="schedule-sheet">
+      <div class="schedule-handle"></div>
+      <div class="schedule-title" id="clientsScheduleTitle">Programar fecha</div>
+      <p class="schedule-hint" id="clientsScheduleHint"></p>
+      <div class="schedule-fields">
+        <div class="schedule-field-group">
+          <label class="schedule-label"><i class="fas fa-calendar"></i> Fecha</label>
+          <input type="date" id="clientsScheduleDatePart" class="schedule-input">
+        </div>
+        <div class="schedule-field-group">
+          <label class="schedule-label"><i class="fas fa-clock"></i> Hora</label>
+          <input type="time" id="clientsScheduleTimePart" class="schedule-input" value="09:00">
+        </div>
+      </div>
+      <div class="schedule-actions">
+        <button class="quotes-btn schedule-confirm-btn" id="btnClientsScheduleConfirm"><i class="fas fa-calendar-check"></i> Confirmar</button>
+        <button class="quotes-btn secondary" id="btnClientsScheduleCancel">Cancelar</button>
+      </div>
+    </div>
+  </div>
 
 </body>
 </html>
