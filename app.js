@@ -1401,13 +1401,38 @@ async function buildPDFDoc() {
   return doc;
 }
 
+function validateQuoteForGeneration() {
+  const clientName = (document.getElementById('clientName').value || '').trim();
+  const serviceItems = getSelectedServiceItems();
+
+  if (!clientName) {
+    showToast('Ingresa el nombre del cliente antes de generar la cotización.', 'error');
+    goToStep(4);
+    setTimeout(() => {
+      const el = document.getElementById('clientName');
+      if (el) { el.focus(); el.classList.add('input-invalid'); }
+    }, 200);
+    return false;
+  }
+
+  if (!serviceItems.length) {
+    showToast('Selecciona al menos un servicio antes de generar la cotización.', 'error');
+    goToStep(2);
+    return false;
+  }
+
+  return true;
+}
+
 async function generatePDF() {
+  if (!validateQuoteForGeneration()) return;
   const doc = await buildPDFDoc();
   doc.save(`${quoteNumber}.pdf`);
   showToast('PDF generado correctamente', 'success');
 }
 
 async function sharePDF() {
+  if (!validateQuoteForGeneration()) return;
   showToast('Generando PDF…', 'info');
   let doc;
   try {

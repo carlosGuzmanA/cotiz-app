@@ -150,6 +150,7 @@
       <div class="quote-actions-row">
         <div class="quote-actions-group">
           <button class="quotes-btn icon-btn" data-action="open" data-id="${item.id}" title="Abrir y editar"><i class="fas fa-pen-to-square"></i></button>
+          <button class="quotes-btn secondary icon-btn" data-action="detail" data-id="${item.id}" title="Ver detalle"><i class="fas fa-eye"></i></button>
           <button class="quotes-btn secondary icon-btn" data-action="duplicate" data-id="${item.id}" title="Duplicar"><i class="fas fa-copy"></i></button>
           ${callBtn}${wazeBtn}
         </div>
@@ -161,6 +162,94 @@
   function navigateToEditorWithQuote(quote) {
     sessionStorage.setItem(PENDING_QUOTE_STORAGE_KEY, JSON.stringify({ quote }));
     window.location.href = 'index.html';
+  }
+
+  // ── Modal de detalle ──────────────────────────────────────
+  function openDetailModal(item) {
+    const client  = item.client  || {};
+    const pricing = item.pricing || {};
+    const status  = item.status  || 'draft';
+    const cfg     = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+
+    const fmtDate = ts => ts ? new Date(ts).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+    const fmtDateOnly = ts => ts ? new Date(ts).toLocaleDateString('es-CL', { dateStyle: 'medium' }) : '—';
+
+    // Equipos
+    const equipRows = (item.equipmentSelections || []).map(eq =>
+      `<div class="detail-row"><span>${eq.marca ? eq.marca + ' ' : ''}${eq.brandModel || ''} ${eq.btu ? (eq.btu/1000).toFixed(0)+'K' : ''} x${eq.qty || 1}</span><span>$${fmtNum((eq.unitPrice || 0) * (eq.qty || 1))}</span></div>`
+    ).join('');
+
+    // Servicios
+    const svcItems = [];
+    const svc = item.serviceSelection || {};
+    if (svc.serviceQtyMap) {
+      if (svc.serviceQtyMap.instalacion > 0) svcItems.push(`Instalación x${svc.serviceQtyMap.instalacion} — $${fmtNum((svc.instalacionUnitValue || 0) * svc.serviceQtyMap.instalacion)}`);
+      if (svc.serviceQtyMap.mantencion  > 0) svcItems.push(`Mantención x${svc.serviceQtyMap.mantencion}  — $${fmtNum((svc.mantencionUnitValue  || 0) * svc.serviceQtyMap.mantencion)}`);
+    }
+    if (svc.selectedService && svc.selectedService !== '' && !svc.serviceQtyMap) {
+      svcItems.push(svc.selectedService);
+    }
+    const svcRows = svcItems.map(s => `<div class="detail-row"><span>${s}</span></div>`).join('');
+
+    const wazeUrl = buildWazeUrl(client);
+    const wazeLink = wazeUrl ? `<a href="${wazeUrl}" target="_blank" rel="noopener noreferrer" class="detail-link"><i class="fas fa-route"></i> Abrir en Waze</a>` : '';
+
+    $('detailModal').innerHTML = `
+      <div class="detail-sheet">
+        <div class="detail-handle"></div>
+        <div class="detail-header">
+          <div>
+            <div class="detail-quote-num">${item.quoteNumber || item.id}</div>
+            <div class="detail-date">Actualizada: ${fmtDate(item.updatedAt)}</div>
+          </div>
+          <span class="status-badge ${cfg.cls}"><i class="fas ${cfg.icon}"></i> ${cfg.label}</span>
+        </div>
+
+        <div class="detail-total-banner">$${fmtNum(pricing.total)}</div>
+
+        <div class="detail-section">
+          <div class="detail-section-title"><i class="fas fa-user"></i> Cliente</div>
+          <div class="detail-kv"><b>Nombre</b><span>${client.name || '—'}</span></div>
+          ${client.rut    ? `<div class="detail-kv"><b>RUT</b><span>${client.rut}</span></div>` : ''}
+          ${client.phone  ? `<div class="detail-kv"><b>Teléfono</b><span><a href="tel:${client.phone.replace(/\s/g,'')}" class="detail-link">${client.phone}</a></span></div>` : ''}
+          ${client.email  ? `<div class="detail-kv"><b>Correo</b><span>${client.email}</span></div>` : ''}
+          ${client.address? `<div class="detail-kv"><b>Dirección</b><span>${[client.address, client.city, client.region].filter(Boolean).join(', ')} ${wazeLink}</span></div>` : ''}
+        </div>
+
+        ${equipRows ? `<div class="detail-section"><div class="detail-section-title"><i class="fas fa-snowflake"></i> Equipos</div>${equipRows}</div>` : ''}
+        ${svcRows   ? `<div class="detail-section"><div class="detail-section-title"><i class="fas fa-screwdriver-wrench"></i> Servicios</div>${svcRows}</div>` : ''}
+
+        <div class="detail-section">
+          <div class="detail-section-title"><i class="fas fa-calculator"></i> Totales</div>
+          ${pricing.equipment  ? `<div class="detail-row"><span>Equipos</span><span>$${fmtNum(pricing.equipment)}</span></div>` : ''}
+          ${pricing.services   ? `<div class="detail-row"><span>Servicios</span><span>$${fmtNum(pricing.services)}</span></div>` : ''}
+          ${pricing.accessories? `<div class="detail-row"><span>Accesorios</span><span>$${fmtNum(pricing.accessories)}</span></div>` : ''}
+          ${pricing.discountPct? `<div class="detail-row discount"><span>Descuento (${pricing.discountPct}%)</span><span>−$${fmtNum(pricing.discountAmount)}</span></div>` : ''}
+          <div class="detail-row total-row"><span>Total</span><span>$${fmtNum(pricing.total)}</span></div>
+        </div>
+
+        ${item.scheduledDate || item.completedAt || item.warrantyDate ? `
+        <div class="detail-section">
+          <div class="detail-section-title"><i class="fas fa-calendar"></i> Fechas</div>
+          ${item.scheduledDate ? `<div class="detail-kv"><b>Instalación</b><span>${fmtDate(item.scheduledDate)}</span></div>` : ''}
+          ${item.completedAt  ? `<div class="detail-kv"><b>Finalizada</b><span>${fmtDateOnly(item.completedAt)}</span></div>` : ''}
+          ${item.warrantyDate ? `<div class="detail-kv"><b>Garantía</b><span>${fmtDateOnly(item.warrantyDate)}</span></div>` : ''}
+        </div>` : ''}
+
+        <div class="detail-actions">
+          <button class="quotes-btn" id="btnDetailOpen"><i class="fas fa-pen-to-square"></i> Abrir y editar</button>
+          <button class="quotes-btn secondary" id="btnDetailClose">Cerrar</button>
+        </div>
+      </div>`;
+
+    $('detailModal').classList.add('open');
+    $('btnDetailClose').onclick = closeDetailModal;
+    $('btnDetailOpen').onclick  = () => { closeDetailModal(); navigateToEditorWithQuote(item); };
+    $('detailModal').onclick = e => { if (e.target === $('detailModal')) closeDetailModal(); };
+  }
+
+  function closeDetailModal() {
+    $('detailModal').classList.remove('open');
   }
 
   function getQuoteYearFromNumber(quoteNumber) {
@@ -329,6 +418,12 @@
 
     try {
       if (action === 'open')      await openQuote(id);
+      if (action === 'detail') {
+        const { user, idToken } = await requireAuthContext();
+        const quote = await window.QuotesRepo.getQuote(user.uid, idToken, id);
+        if (quote) openDetailModal(quote);
+        return;
+      }
       if (action === 'duplicate') await duplicateQuote(id);
       if (action === 'delete')    await deleteQuote(id);
       if (action === 'advance') {

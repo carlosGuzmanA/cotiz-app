@@ -162,7 +162,7 @@
 
     <div class="form-group">
       <label class="form-label">Nombre completo *</label>
-      <input type="text" class="form-input" id="clientName" placeholder="Ej: Juan Pérez González">
+      <input type="text" class="form-input" id="clientName" placeholder="Ej: Juan Pérez González" oninput="this.classList.remove('input-invalid')">
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -447,6 +447,19 @@
     if (step === 2) return goToStep(3);
     if (step === 3) return goToStep(4);
     if (step === 4) {
+      const clientName = (document.getElementById('clientName').value || '').trim();
+      const serviceOk = typeof getSelectedServiceItems === 'function' && getSelectedServiceItems().length > 0;
+      if (!clientName) {
+        const el = document.getElementById('clientName');
+        if (el) { el.focus(); el.classList.add('input-invalid'); }
+        if (typeof showToast === 'function') showToast('Ingresa el nombre del cliente para continuar.', 'error');
+        return;
+      }
+      if (!serviceOk) {
+        if (typeof showToast === 'function') showToast('Selecciona al menos un servicio para continuar.', 'error');
+        goToStep(2);
+        return;
+      }
       buildSummary();
       return goToStep(5);
     }
