@@ -719,3 +719,62 @@ body.quotes-page {
   min-width: 30px;
   flex-shrink: 0;
 }
+
+/* ── Tab bar de secciones ──────────────────────────────── */
+.section-tabs {
+  display: flex;
+  background: #fff;
+  border: 1px solid #d8d2c8;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 22px;
+  box-shadow: 0 1px 4px rgba(26, 22, 18, 0.07);
+}
+
+.section-tab {
+  flex: 1;
+  padding: 13px 12px;
+  background: none;
+  border: none;
+  border-right: 1px solid #e8e3dc;
+  cursor: pointer;
+  font-family: 'Lato', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6a655e;
+  letter-spacing: 0.2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.section-tab:last-child {
+  border-right: none;
+}
+
+.section-tab i {
+  font-size: 14px;
+  opacity: 0.75;
+}
+
+.section-tab:hover {
+  background: #f4f2ee;
+  color: #1a3a5c;
+}
+
+.section-tab.active {
+  background: #1a3a5c;
+  color: #fff;
+  font-weight: 700;
+}
+
+.section-tab.active i {
+  opacity: 1;
+}
+
+.section-tab.active:hover {
+  background: #142e4a;
+}
