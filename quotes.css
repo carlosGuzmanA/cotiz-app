@@ -102,7 +102,7 @@ body.quotes-page {
   border: 1px solid #d8d2c8;
   border-radius: 6px;
   box-shadow: 0 1px 4px rgba(26, 22, 18, 0.08);
-  padding: 16px;
+  padding: 8px;
 }
 
 .auth-card {
@@ -677,6 +677,46 @@ body.quotes-page {
 .client-quotes-list {
   border-top: 1px solid #e8e4de;
   background: #f4f2ee;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Quote items dentro del acordeón de clientes */
+.client-quotes-list .quote-list {
+  margin-top: 0;
+  box-sizing: border-box;
+}
+
+.client-quotes-list .quote-item {
+  /* Eliminar el borde-left de estado: el card padre ya lo muestra */
+  border-left: 1px solid #d8d2c8;
+  box-sizing: border-box;
+}
+
+/* Status override: mostrar solo el badge, no el borde duplicado */
+.client-quotes-list .status-border-draft,
+.client-quotes-list .status-border-issued,
+.client-quotes-list .status-border-accepted,
+.client-quotes-list .status-border-scheduled,
+.client-quotes-list .status-border-completed,
+.client-quotes-list .status-border-warranty {
+  border-left-color: #d8d2c8;
+}
+
+/* Evitar desbordamiento horizontal de botones de acción */
+.client-quotes-list .quote-actions-row {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.client-quotes-list .quote-actions-group {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.client-quotes-list .quote-advance-row .action-btn {
+  font-size: 11px;
+  padding: 8px 10px;
 }
 
 /* Botones deshabilitados */
