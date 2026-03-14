@@ -1616,7 +1616,8 @@ function getEquipmentSelectionsSnapshot() {
     marca: item.ac.marca || '',
     brandModel: item.ac.brand_model || '',
     btu: Number(item.btu),
-    qty: Number(item.qty)
+    qty: Number(item.qty),
+    unitPrice: Number(item.cap.price_with_tax || 0)
   }));
 }
 
