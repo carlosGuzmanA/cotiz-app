@@ -48,6 +48,53 @@
   <!-- MODAL: DETALLE COTIZACIÓN -->
   <div class="detail-overlay" id="detailModal"></div>
 
+  <!-- MODAL: EDITAR CLIENTE / NOTAS -->
+  <div class="detail-overlay" id="partialEditModal">
+    <div class="detail-sheet">
+      <div class="detail-handle"></div>
+      <div class="schedule-title">Editar datos del cliente</div>
+      <p class="schedule-hint">Solo puedes editar información del cliente y observaciones en cotizaciones ya aceptadas.</p>
+      <div class="partial-edit-fields">
+        <div class="partial-edit-group">
+          <label class="schedule-label">Nombre</label>
+          <input type="text" id="peClientName" class="schedule-input" placeholder="Nombre del cliente">
+        </div>
+        <div class="partial-edit-group">
+          <label class="schedule-label">RUT</label>
+          <input type="text" id="peClientRut" class="schedule-input" placeholder="12.345.678-9">
+        </div>
+        <div class="partial-edit-group">
+          <label class="schedule-label">Teléfono</label>
+          <input type="tel" id="peClientPhone" class="schedule-input" placeholder="+56 9 XXXX XXXX">
+        </div>
+        <div class="partial-edit-group">
+          <label class="schedule-label">Correo</label>
+          <input type="email" id="peClientEmail" class="schedule-input" placeholder="correo@ejemplo.cl">
+        </div>
+        <div class="partial-edit-group partial-edit-full">
+          <label class="schedule-label">Dirección</label>
+          <input type="text" id="peClientAddress" class="schedule-input" placeholder="Dirección">
+        </div>
+        <div class="partial-edit-group">
+          <label class="schedule-label">Ciudad</label>
+          <input type="text" id="peClientCity" class="schedule-input" placeholder="Ciudad">
+        </div>
+        <div class="partial-edit-group">
+          <label class="schedule-label">Región</label>
+          <input type="text" id="peClientRegion" class="schedule-input" placeholder="Región">
+        </div>
+        <div class="partial-edit-group partial-edit-full">
+          <label class="schedule-label">Observaciones generales</label>
+          <textarea id="peNotes" class="schedule-input" rows="3" placeholder="Observaciones..."></textarea>
+        </div>
+      </div>
+      <div class="schedule-actions">
+        <button class="quotes-btn schedule-confirm-btn" id="btnPartialEditConfirm"><i class="fas fa-floppy-disk"></i> Guardar</button>
+        <button class="quotes-btn secondary" id="btnPartialEditCancel">Cancelar</button>
+      </div>
+    </div>
+  </div></div>
+
   <!-- MODAL: PROGRAMAR FECHA -->
   <div class="schedule-overlay" id="scheduleModal">
     <div class="schedule-sheet">

@@ -30,6 +30,9 @@
     warranty:  'Programar garantía'
   };
 
+  // Estados que bloquean edición completa
+  const LOCKED_STATES = new Set(['accepted', 'scheduled', 'completed', 'warranty']);
+
   function $(id) { return document.getElementById(id); }
 
   function fmtNum(n) {
@@ -133,6 +136,13 @@
     const callBtn  = phone   ? `<a class="quotes-btn secondary icon-btn" href="tel:${phone.replace(/\s/g,'')}" title="Llamar"><i class="fas fa-phone"></i></a>` : '';
     const wazeBtn  = wazeUrl ? `<a class="quotes-btn secondary icon-btn" href="${wazeUrl}" target="_blank" rel="noopener noreferrer" title="Waze"><i class="fas fa-route"></i></a>` : '';
     const advanceBtn = nextTransitionButton(item);
+    const isLocked = LOCKED_STATES.has(status);
+    const editBtn = isLocked
+      ? `<button class="quotes-btn icon-btn" disabled title="Cotización bloqueada: no se puede editar en este estado"><i class="fas fa-pen-to-square"></i></button>`
+      : `<button class="quotes-btn icon-btn" data-action="open" data-id="${item.id}" title="Abrir y editar"><i class="fas fa-pen-to-square"></i></button>`;
+    const partialEditBtn = isLocked
+      ? `<button class="quotes-btn secondary icon-btn" data-action="partial-edit" data-id="${item.id}" title="Editar cliente y observaciones"><i class="fas fa-user-pen"></i></button>`
+      : '';
 
     return `<div class="quote-item status-border-${status}" data-id="${item.id}">
       <div class="quote-head">
@@ -150,7 +160,7 @@
       ${advanceBtn ? `<div class="quote-advance-row">${advanceBtn}</div>` : ''}
       <div class="quote-actions-row">
         <div class="quote-actions-group">
-          <button class="quotes-btn icon-btn" data-action="open" data-id="${item.id}" title="Abrir y editar"><i class="fas fa-pen-to-square"></i></button>
+          ${editBtn}${partialEditBtn}
           <button class="quotes-btn secondary icon-btn" data-action="detail" data-id="${item.id}" title="Ver detalle"><i class="fas fa-eye"></i></button>
           <button class="quotes-btn secondary icon-btn" data-action="duplicate" data-id="${item.id}" title="Duplicar"><i class="fas fa-copy"></i></button>
           ${callBtn}${wazeBtn}
@@ -158,6 +168,71 @@
         <button class="quotes-btn danger icon-btn" data-action="delete" data-id="${item.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
       </div>
     </div>`;
+  }
+
+  // ── Edición parcial (cliente + notas) ────────────────────
+  let _partialEditId = null;
+
+  async function openPartialEditModal(id) {
+    _partialEditId = id;
+    try {
+      const { user, idToken } = await requireAuthContext();
+      const quote = await window.QuotesRepo.getQuote(user.uid, idToken, id);
+      if (!quote) throw new Error('Cotización no encontrada.');
+      const c = quote.client || {};
+      const setVal = (elId, val) => { const el = $(elId); if (el) el.value = val || ''; };
+      setVal('peClientName',    c.name);
+      setVal('peClientRut',     c.rut);
+      setVal('peClientPhone',   c.phone);
+      setVal('peClientEmail',   c.email);
+      setVal('peClientAddress', c.address);
+      setVal('peClientCity',    c.city);
+      setVal('peClientRegion',  c.region);
+      setVal('peNotes',         (quote.notes && quote.notes.client) || (quote.notes && quote.notes.service) || '');
+      $('partialEditModal').classList.add('open');
+    } catch(e) {
+      showStatus(e.message || 'Error al cargar datos.', true);
+    }
+  }
+
+  function closePartialEditModal() {
+    _partialEditId = null;
+    $('partialEditModal').classList.remove('open');
+  }
+
+  async function confirmPartialEdit() {
+    if (!_partialEditId) return;
+    const getVal = id => { const el = $(id); return el ? el.value.trim() : ''; };
+    try {
+      const { user, idToken } = await requireAuthContext();
+      const current = await window.QuotesRepo.getQuote(user.uid, idToken, _partialEditId);
+      if (!current) throw new Error('Cotización no encontrada.');
+      const merged = {
+        ...current,
+        client: {
+          ...(current.client || {}),
+          name:    getVal('peClientName'),
+          rut:     getVal('peClientRut'),
+          phone:   getVal('peClientPhone'),
+          email:   getVal('peClientEmail'),
+          address: getVal('peClientAddress'),
+          city:    getVal('peClientCity'),
+          region:  getVal('peClientRegion')
+        },
+        notes: {
+          ...(current.notes || {}),
+          client:  getVal('peNotes'),
+          service: getVal('peNotes')
+        },
+        updatedAt: Date.now()
+      };
+      await window.QuotesRepo.saveQuote(user.uid, idToken, merged, _partialEditId);
+      closePartialEditModal();
+      showStatus('Datos del cliente actualizados.', false);
+      await loadQuotes();
+    } catch(e) {
+      showStatus(e.message || 'Error al guardar.', true);
+    }
   }
 
   function navigateToEditorWithQuote(quote) {
@@ -420,6 +495,7 @@
 
     try {
       if (action === 'open')      await openQuote(id);
+      if (action === 'partial-edit') { await openPartialEditModal(id); return; }
       if (action === 'detail') {
         const { user, idToken } = await requireAuthContext();
         const quote = await window.QuotesRepo.getQuote(user.uid, idToken, id);
@@ -464,6 +540,9 @@
     $('btnScheduleConfirm').addEventListener('click', confirmSchedule);
     $('btnScheduleCancel').addEventListener('click', closeScheduleModal);
     $('scheduleModal').addEventListener('click', e => { if (e.target === $('scheduleModal')) closeScheduleModal(); });
+    $('btnPartialEditConfirm').addEventListener('click', confirmPartialEdit);
+    $('btnPartialEditCancel').addEventListener('click', closePartialEditModal);
+    $('partialEditModal').addEventListener('click', e => { if (e.target === $('partialEditModal')) closePartialEditModal(); });
     await bootstrap();
   });
 })();

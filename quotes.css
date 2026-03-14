@@ -682,6 +682,35 @@ body.quotes-page {
   gap: 4px;
 }
 
+/* Botones deshabilitados */
+.quotes-btn:disabled,
+.quotes-btn[disabled] {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Modal edición parcial */
+.partial-edit-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.partial-edit-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.partial-edit-full {
+  grid-column: 1 / -1;
+}
+.partial-edit-fields textarea.schedule-input {
+  resize: vertical;
+  min-height: 70px;
+  padding-top: 10px;
+}
+
 /* Icon-only buttons */
 .icon-btn {
   padding: 7px 10px;

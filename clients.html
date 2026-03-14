@@ -118,6 +118,14 @@
         rescheduleBtn = '<button class="quotes-btn secondary reschedule-btn" data-action="reschedule" data-id="' + q.id + '" data-warranty-date="' + (q.warrantyDate || '') + '" title="Reprogramar garantía"><i class="fas fa-calendar-pen"></i> Garantía: ' + wdLabel + '</button>';
       }
 
+      var isLocked = ['accepted','scheduled','completed','warranty'].indexOf(q.status) !== -1;
+      var editBtn = isLocked
+        ? '<button class="quotes-btn icon-btn" disabled title="Cotización bloqueada"><i class="fas fa-pen-to-square"></i></button>'
+        : '<button class="quotes-btn icon-btn" data-action="open" data-id="' + q.id + '" title="Abrir y editar"><i class="fas fa-pen-to-square"></i></button>';
+      var partialEditBtn = isLocked
+        ? '<button class="quotes-btn secondary icon-btn" data-action="partial-edit" data-id="' + q.id + '" title="Editar cliente y observaciones"><i class="fas fa-user-pen"></i></button>'
+        : '';
+
       return '<div class="quote-item">' +
         '<div class="quote-head">' +
           '<div class="quote-head-left">' +
@@ -131,7 +139,7 @@
         (rescheduleBtn ? '<div style="margin-top:8px">' + rescheduleBtn + '</div>' : '') +
         '<div class="quote-actions-row" style="margin-top:8px">' +
           '<div class="quote-actions-group">' +
-            '<button class="quotes-btn icon-btn" data-action="open" data-id="' + q.id + '" title="Abrir y editar"><i class="fas fa-pen-to-square"></i></button>' +
+            editBtn + partialEditBtn +
             '<button class="quotes-btn secondary icon-btn" data-action="detail" data-id="' + q.id + '" title="Ver detalle"><i class="fas fa-eye"></i></button>' +
             callBtn + wazeBtn +
           '</div>' +
@@ -246,6 +254,64 @@
     function closeRescheduleModal() {
       _rescheduleId = null;
       $('rescheduleModal').classList.remove('open');
+    }
+
+    // ── Edición parcial de cliente ────────────────────────────
+    var _partialEditQuote = null;
+
+    function openClientPartialEdit(quote) {
+      _partialEditQuote = quote;
+      var c = quote.client || {};
+      var setVal = function(id, val) { var el = $(id); if (el) el.value = val || ''; };
+      setVal('cpeClientName',    c.name);
+      setVal('cpeClientRut',     c.rut);
+      setVal('cpeClientPhone',   c.phone);
+      setVal('cpeClientEmail',   c.email);
+      setVal('cpeClientAddress', c.address);
+      setVal('cpeClientCity',    c.city);
+      setVal('cpeClientRegion',  c.region);
+      setVal('cpeNotes',         (quote.notes && (quote.notes.client || quote.notes.service)) || '');
+      var modal = $('clientPartialEditModal');
+      modal.classList.add('open');
+      modal.onclick = function(e) { if (e.target === modal) closeClientPartialEdit(); };
+    }
+
+    function closeClientPartialEdit() {
+      _partialEditQuote = null;
+      $('clientPartialEditModal').classList.remove('open');
+    }
+
+    async function confirmClientPartialEdit() {
+      if (!_partialEditQuote) return;
+      var getVal = function(id) { var el = $(id); return el ? el.value.trim() : ''; };
+      try {
+        var user = window.FirebaseAuthService.getCurrentUser();
+        var idToken = await window.FirebaseAuthService.getValidIdToken();
+        var merged = Object.assign({}, _partialEditQuote, {
+          client: Object.assign({}, _partialEditQuote.client || {}, {
+            name:    getVal('cpeClientName'),
+            rut:     getVal('cpeClientRut'),
+            phone:   getVal('cpeClientPhone'),
+            email:   getVal('cpeClientEmail'),
+            address: getVal('cpeClientAddress'),
+            city:    getVal('cpeClientCity'),
+            region:  getVal('cpeClientRegion')
+          }),
+          notes: Object.assign({}, _partialEditQuote.notes || {}, {
+            client:  getVal('cpeNotes'),
+            service: getVal('cpeNotes')
+          }),
+          updatedAt: Date.now()
+        });
+        await window.QuotesRepo.saveQuote(user.uid, idToken, merged, _partialEditQuote.id);
+        // Actualizar caché local
+        quoteById[_partialEditQuote.id] = merged;
+        closeClientPartialEdit();
+        renderFiltered($('clientsSearchInput').value);
+        showStatus('Datos del cliente actualizados.', false);
+      } catch(e) {
+        alert('Error al guardar: ' + (e.message || 'Error desconocido'));
+      }
     }
 
     async function confirmReschedule() {
@@ -403,6 +469,15 @@
     }
 
     function onListClick(evt) {
+      // "Editar cliente" button (partial edit)
+      var partialBtn = evt.target.closest('button[data-action="partial-edit"]');
+      if (partialBtn) {
+        var pid = partialBtn.dataset.id;
+        var pQuote = quoteById[pid];
+        if (pQuote) openClientPartialEdit(pQuote);
+        return;
+      }
+
       // "Reprogramar garantía" button
       var rescheduleBtn = evt.target.closest('button[data-action="reschedule"]');
       if (rescheduleBtn) {
@@ -472,11 +547,59 @@
       bootstrap();
     });
 
-    // Exponer para onclick inline del modal
-    window.confirmReschedule  = confirmReschedule;
-    window.closeRescheduleModal = closeRescheduleModal;
+    window.confirmReschedule      = confirmReschedule;
+    window.closeRescheduleModal   = closeRescheduleModal;
+    window.confirmClientPartialEdit = confirmClientPartialEdit;
+    window.closeClientPartialEdit   = closeClientPartialEdit;
   })();
   </script>
+  <!-- MODAL: EDITAR CLIENTE / NOTAS -->
+  <div class="detail-overlay" id="clientPartialEditModal">
+    <div class="detail-sheet">
+      <div class="detail-handle"></div>
+      <div class="schedule-title">Editar datos del cliente</div>
+      <p class="schedule-hint">Solo puedes editar información del cliente y observaciones.</p>
+      <div class="partial-edit-fields">
+        <div class="partial-edit-group">
+          <label class="schedule-label">Nombre</label>
+          <input type="text" id="cpeClientName" class="schedule-input" placeholder="Nombre del cliente">
+        </div>
+        <div class="partial-edit-group">
+          <label class="schedule-label">RUT</label>
+          <input type="text" id="cpeClientRut" class="schedule-input" placeholder="12.345.678-9">
+        </div>
+        <div class="partial-edit-group">
+          <label class="schedule-label">Teléfono</label>
+          <input type="tel" id="cpeClientPhone" class="schedule-input" placeholder="+56 9 XXXX XXXX">
+        </div>
+        <div class="partial-edit-group">
+          <label class="schedule-label">Correo</label>
+          <input type="email" id="cpeClientEmail" class="schedule-input" placeholder="correo@ejemplo.cl">
+        </div>
+        <div class="partial-edit-group partial-edit-full">
+          <label class="schedule-label">Dirección</label>
+          <input type="text" id="cpeClientAddress" class="schedule-input" placeholder="Dirección">
+        </div>
+        <div class="partial-edit-group">
+          <label class="schedule-label">Ciudad</label>
+          <input type="text" id="cpeClientCity" class="schedule-input" placeholder="Ciudad">
+        </div>
+        <div class="partial-edit-group">
+          <label class="schedule-label">Región</label>
+          <input type="text" id="cpeClientRegion" class="schedule-input" placeholder="Región">
+        </div>
+        <div class="partial-edit-group partial-edit-full">
+          <label class="schedule-label">Observaciones generales</label>
+          <textarea id="cpeNotes" class="schedule-input" rows="3" placeholder="Observaciones..."></textarea>
+        </div>
+      </div>
+      <div class="schedule-actions">
+        <button class="quotes-btn schedule-confirm-btn" onclick="confirmClientPartialEdit()"><i class="fas fa-floppy-disk"></i> Guardar</button>
+        <button class="quotes-btn secondary" onclick="closeClientPartialEdit()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: REPROGRAMAR GARANTÍA -->
   <div class="detail-overlay" id="rescheduleModal">
     <div class="detail-sheet" style="max-height:60vh">
