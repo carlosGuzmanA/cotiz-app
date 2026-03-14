@@ -116,7 +116,8 @@
     const next = nexts[0];
     const needsDate = next === 'scheduled' || next === 'warranty';
     const dataDate = needsDate ? `data-needs-date="1"` : '';
-    return `<button class="quotes-btn action-btn" data-action="advance" data-id="${item.id}" data-next="${next}" ${dataDate} title="${TRANSITION_LABEL[next]}">
+    const dataCompleted = item.completedAt ? `data-completed-at="${item.completedAt}"` : '';
+    return `<button class="quotes-btn action-btn" data-action="advance" data-id="${item.id}" data-next="${next}" ${dataDate} ${dataCompleted} title="${TRANSITION_LABEL[next]}">
       <i class="fas ${STATUS_CONFIG[next].icon}"></i> ${TRANSITION_LABEL[next]}
     </button>`;
   }
@@ -135,11 +136,11 @@
 
     return `<div class="quote-item status-border-${status}" data-id="${item.id}">
       <div class="quote-head">
-        <div>
+        <div class="quote-head-left">
           <div class="quote-num">${item.quoteNumber || item.id}</div>
           <div class="quote-meta">Actualizada: ${updated}</div>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <div class="quote-head-right">
           ${statusBadge(status)}
           <div class="quote-total">${total}</div>
         </div>
@@ -325,7 +326,7 @@
   // ── Modal de fecha ────────────────────────────────────────
   let _pendingAdvance = null;
 
-  function openScheduleModal(id, nextStatus) {
+  function openScheduleModal(id, nextStatus, completedAt) {
     _pendingAdvance = { id, nextStatus };
     const modal = $('scheduleModal');
     const title = $('scheduleModalTitle');
@@ -346,17 +347,18 @@
       timePart.value = '09:00';
     } else if (nextStatus === 'warranty') {
       title.textContent = 'Visita de garantía';
-      hint.textContent  = 'Agenda la visita de garantía (sin costo, dentro de 6 meses).';
+      hint.textContent  = 'Agenda la visita de garantía (sin costo). Fecha sugerida: 6 meses desde la finalización.';
       timeGroup.style.display = '';
-      // Sugerir 3 meses adelante
-      const suggested = new Date();
-      suggested.setMonth(suggested.getMonth() + 3);
-      datePart.value = suggested.toISOString().slice(0, 10);
-      // Fecha máxima: 6 meses
-      const maxDate = new Date();
-      maxDate.setMonth(maxDate.getMonth() + 6);
-      datePart.max = maxDate.toISOString().slice(0, 10);
       timePart.value = '09:00';
+
+      // Base: fecha de finalización si existe, si no desde hoy
+      const base = completedAt ? new Date(completedAt) : new Date();
+      const suggested = new Date(base);
+      suggested.setMonth(suggested.getMonth() + 6);
+      datePart.value = suggested.toISOString().slice(0, 10);
+
+      // Máximo: también 6 meses desde la base
+      datePart.max = suggested.toISOString().slice(0, 10);
     } else {
       datePart.value = '';
       timePart.value = '09:00';
@@ -430,7 +432,8 @@
         const next = btn.dataset.next;
         const needsDate = btn.dataset.needsDate === '1';
         if (needsDate) {
-          openScheduleModal(id, next);
+          const completedAt = btn.dataset.completedAt ? Number(btn.dataset.completedAt) : null;
+          openScheduleModal(id, next, completedAt);
         } else {
           await advanceStatus(id, next, null);
         }

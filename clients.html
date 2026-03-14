@@ -96,17 +96,102 @@
         : '';
       return '<div class="quote-item">' +
         '<div class="quote-head">' +
-          '<div>' +
+          '<div class="quote-head-left">' +
             '<div class="quote-num">' + (q.quoteNumber || q.id) + '</div>' +
             '<div class="quote-meta">' + date + ' &middot; ' + statusLabel(q.status) + '</div>' +
           '</div>' +
-          '<div class="quote-total">' + total + '</div>' +
+          '<div class="quote-head-right">' +
+            '<div class="quote-total">' + total + '</div>' +
+          '</div>' +
         '</div>' +
-        '<div class="quote-actions">' +
-          '<button class="quotes-btn" data-action="open" data-id="' + q.id + '">Abrir y editar</button>' +
-          callBtn + wazeBtn +
+        '<div class="quote-actions-row" style="margin-top:8px">' +
+          '<div class="quote-actions-group">' +
+            '<button class="quotes-btn icon-btn" data-action="open" data-id="' + q.id + '" title="Abrir y editar"><i class="fas fa-pen-to-square"></i></button>' +
+            '<button class="quotes-btn secondary icon-btn" data-action="detail" data-id="' + q.id + '" title="Ver detalle"><i class="fas fa-eye"></i></button>' +
+            callBtn + wazeBtn +
+          '</div>' +
         '</div>' +
       '</div>';
+    }
+
+    function openDetailModal(item) {
+      var client  = item.client  || {};
+      var pricing = item.pricing || {};
+      var status  = item.status  || 'draft';
+      var statusLabels = { draft:'Borrador', issued:'Emitida', accepted:'Aceptada', scheduled:'Programada', completed:'Finalizada', warranty:'Garantía' };
+      var statusIcons  = { draft:'fa-file-pen', issued:'fa-paper-plane', accepted:'fa-circle-check', scheduled:'fa-calendar-check', completed:'fa-flag-checkered', warranty:'fa-shield-halved' };
+      var statusCls    = { draft:'status-draft', issued:'status-issued', accepted:'status-accepted', scheduled:'status-scheduled', completed:'status-completed', warranty:'status-warranty' };
+      var cfg = { label: statusLabels[status] || status, icon: statusIcons[status] || 'fa-file', cls: statusCls[status] || 'status-draft' };
+
+      var fmtDate = function(ts) { return ts ? new Date(ts).toLocaleString('es-CL', { dateStyle:'medium', timeStyle:'short' }) : '—'; };
+      var fmtDateOnly = function(ts) { return ts ? new Date(ts).toLocaleDateString('es-CL', { dateStyle:'medium' }) : '—'; };
+
+      var equipRows = (item.equipmentSelections || []).map(function(eq) {
+        return '<div class="detail-row"><span>' + (eq.marca ? eq.marca + ' ' : '') + (eq.brandModel || '') + ' ' + (eq.btu ? (eq.btu/1000).toFixed(0)+'K' : '') + ' x' + (eq.qty || 1) + '</span><span>$' + fmtNum((eq.unitPrice || 0) * (eq.qty || 1)) + '</span></div>';
+      }).join('');
+
+      var svcItems = [];
+      var svc = item.serviceSelection || {};
+      if (svc.serviceQtyMap) {
+        if (svc.serviceQtyMap.instalacion > 0) svcItems.push('Instalación x' + svc.serviceQtyMap.instalacion + ' — $' + fmtNum((svc.instalacionUnitValue || 0) * svc.serviceQtyMap.instalacion));
+        if (svc.serviceQtyMap.mantencion  > 0) svcItems.push('Mantención x'  + svc.serviceQtyMap.mantencion  + ' — $' + fmtNum((svc.mantencionUnitValue  || 0) * svc.serviceQtyMap.mantencion));
+      }
+      var svcRows = svcItems.map(function(s) { return '<div class="detail-row"><span>' + s + '</span></div>'; }).join('');
+
+      var wazeUrl = buildWazeUrl(client);
+      var wazeLink = wazeUrl ? '<a href="' + wazeUrl + '" target="_blank" rel="noopener noreferrer" class="detail-link"><i class="fas fa-route"></i> Abrir en Waze</a>' : '';
+
+      var modal = $('clientDetailModal');
+      modal.innerHTML =
+        '<div class="detail-sheet">' +
+          '<div class="detail-handle"></div>' +
+          '<div class="detail-header">' +
+            '<div>' +
+              '<div class="detail-quote-num">' + (item.quoteNumber || item.id) + '</div>' +
+              '<div class="detail-date">Actualizada: ' + fmtDate(item.updatedAt) + '</div>' +
+            '</div>' +
+            '<span class="status-badge ' + cfg.cls + '"><i class="fas ' + cfg.icon + '"></i> ' + cfg.label + '</span>' +
+          '</div>' +
+          '<div class="detail-total-banner">$' + fmtNum(pricing.total) + '</div>' +
+          '<div class="detail-section">' +
+            '<div class="detail-section-title"><i class="fas fa-user"></i> Cliente</div>' +
+            '<div class="detail-kv"><b>Nombre</b><span>' + (client.name || '—') + '</span></div>' +
+            (client.rut   ? '<div class="detail-kv"><b>RUT</b><span>' + client.rut + '</span></div>' : '') +
+            (client.phone ? '<div class="detail-kv"><b>Teléfono</b><span><a href="tel:' + client.phone.replace(/\s/g,'') + '" class="detail-link">' + client.phone + '</a></span></div>' : '') +
+            (client.email ? '<div class="detail-kv"><b>Correo</b><span>' + client.email + '</span></div>' : '') +
+            (client.address ? '<div class="detail-kv"><b>Dirección</b><span>' + [client.address, client.city, client.region].filter(Boolean).join(', ') + ' ' + wazeLink + '</span></div>' : '') +
+          '</div>' +
+          (equipRows ? '<div class="detail-section"><div class="detail-section-title"><i class="fas fa-snowflake"></i> Equipos</div>' + equipRows + '</div>' : '') +
+          (svcRows   ? '<div class="detail-section"><div class="detail-section-title"><i class="fas fa-screwdriver-wrench"></i> Servicios</div>' + svcRows + '</div>' : '') +
+          '<div class="detail-section">' +
+            '<div class="detail-section-title"><i class="fas fa-calculator"></i> Totales</div>' +
+            (pricing.equipment   ? '<div class="detail-row"><span>Equipos</span><span>$' + fmtNum(pricing.equipment) + '</span></div>' : '') +
+            (pricing.services    ? '<div class="detail-row"><span>Servicios</span><span>$' + fmtNum(pricing.services) + '</span></div>' : '') +
+            (pricing.accessories ? '<div class="detail-row"><span>Accesorios</span><span>$' + fmtNum(pricing.accessories) + '</span></div>' : '') +
+            (pricing.discountPct ? '<div class="detail-row discount"><span>Descuento (' + pricing.discountPct + '%)</span><span>−$' + fmtNum(pricing.discountAmount) + '</span></div>' : '') +
+            '<div class="detail-row total-row"><span>Total</span><span>$' + fmtNum(pricing.total) + '</span></div>' +
+          '</div>' +
+          (item.scheduledDate || item.completedAt || item.warrantyDate ?
+            '<div class="detail-section">' +
+              '<div class="detail-section-title"><i class="fas fa-calendar"></i> Fechas</div>' +
+              (item.scheduledDate ? '<div class="detail-kv"><b>Instalación</b><span>' + fmtDate(item.scheduledDate) + '</span></div>' : '') +
+              (item.completedAt  ? '<div class="detail-kv"><b>Finalizada</b><span>' + fmtDateOnly(item.completedAt) + '</span></div>' : '') +
+              (item.warrantyDate ? '<div class="detail-kv"><b>Garantía</b><span>' + fmtDateOnly(item.warrantyDate) + '</span></div>' : '') +
+            '</div>' : '') +
+          '<div class="detail-actions">' +
+            '<button class="quotes-btn" id="btnClientDetailOpen"><i class="fas fa-pen-to-square"></i> Abrir y editar</button>' +
+            '<button class="quotes-btn secondary" id="btnClientDetailClose">Cerrar</button>' +
+          '</div>' +
+        '</div>';
+
+      modal.classList.add('open');
+      $('btnClientDetailClose').onclick = closeDetailModal;
+      $('btnClientDetailOpen').onclick = function() { closeDetailModal(); navigateToEditorWithQuote(item); };
+      modal.onclick = function(e) { if (e.target === modal) closeDetailModal(); };
+    }
+
+    function closeDetailModal() {
+      $('clientDetailModal').classList.remove('open');
     }
 
     function renderClientCard(client, clientQuotes) {
@@ -230,6 +315,15 @@
     }
 
     function onListClick(evt) {
+      // "Ver detalle" button
+      var detailBtn = evt.target.closest('button[data-action="detail"]');
+      if (detailBtn) {
+        var detailId = detailBtn.dataset.id;
+        var detailQuote = quoteById[detailId];
+        if (detailQuote) openDetailModal(detailQuote);
+        return;
+      }
+
       // "Abrir y editar" button
       var openBtn = evt.target.closest('button[data-action="open"]');
       if (openBtn) {
@@ -282,5 +376,8 @@
     });
   })();
   </script>
+  <!-- MODAL: DETALLE COTIZACIÓN -->
+  <div class="detail-overlay" id="clientDetailModal"></div>
+
 </body>
 </html>

@@ -434,8 +434,23 @@ body.quotes-page {
 .quote-head {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+}
+
+.quote-head-left {
+  min-width: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+}
+
+.quote-head-right {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
 }
 
 .quote-num {
@@ -443,16 +458,25 @@ body.quotes-page {
   font-size: 12px;
   color: #1a3a5c;
   font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .quote-meta {
   font-size: 11px;
   color: #6a655e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .quote-client {
   margin-top: 6px;
   font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .quote-total {
@@ -460,6 +484,7 @@ body.quotes-page {
   color: #1a3a5c;
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .quote-actions {
