@@ -615,21 +615,26 @@
 
       return '<div class="client-card' + alertCls + '" data-client-id="' + client.id + '">' +
         '<div class="client-card-header">' +
-          '<div class="client-card-info">' +
+          '<div class="client-card-top">' +
             '<div class="client-name-row">' +
               '<div class="client-card-name">' + (client.name || 'Sin nombre') + '</div>' +
               alertBadge +
             '</div>' +
             '<div class="client-card-rut">' + (client.rut || 'Sin RUT') + '</div>' +
-            '<div class="client-card-details">' + phoneHtml + emailHtml + locationHtml + '</div>' +
-            '<div class="client-card-actions">' + callBtnCard + wazeBtnCard +
-              '<button class="quotes-btn secondary icon-btn client-action-btn" data-action="edit-client" data-client-id="' + client.id + '" title="Editar datos del cliente"><i class="fas fa-user-pen"></i></button>' +
-            '</div>' +
+            (phoneHtml || emailHtml || locationHtml
+              ? '<div class="client-card-details">' + phoneHtml + emailHtml + locationHtml + '</div>'
+              : '') +
           '</div>' +
-          '<button class="client-toggle-btn" data-client-id="' + client.id + '" aria-expanded="false">' +
-            '<span class="client-quote-count">' + countLabel + '</span>' +
-            '<span class="client-toggle-icon">&#9660;</span>' +
-          '</button>' +
+          '<div class="client-card-footer">' +
+            '<div class="client-card-actions">' +
+              callBtnCard + wazeBtnCard +
+              '<button class="quotes-btn secondary icon-btn" data-action="edit-client" data-client-id="' + client.id + '" title="Editar datos del cliente"><i class="fas fa-user-pen"></i></button>' +
+            '</div>' +
+            '<button class="client-toggle-btn" data-client-id="' + client.id + '" aria-expanded="false">' +
+              '<span class="client-quote-count">' + countLabel + '</span>' +
+              '<i class="fas fa-chevron-down client-toggle-icon"></i>' +
+            '</button>' +
+          '</div>' +
         '</div>' +
         '<div class="client-quotes-list hidden" data-quotes-for="' + client.id + '">' +
           '<div class="quote-list" style="padding:10px;">' + quotesHtml + '</div>' +
@@ -817,8 +822,6 @@
         if (panel) {
           var isOpen = !panel.classList.contains('hidden');
           panel.classList.toggle('hidden', isOpen);
-          var icon = toggleBtn.querySelector('.client-toggle-icon');
-          if (icon) icon.innerHTML = isOpen ? '&#9660;' : '&#9650;';
           toggleBtn.setAttribute('aria-expanded', String(!isOpen));
         }
       }

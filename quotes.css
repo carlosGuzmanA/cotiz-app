@@ -553,10 +553,10 @@ body.quotes-page {
 
 .client-card {
   border: 1px solid #d8d2c8;
-  border-radius: 4px;
+  border-radius: 6px;
   background: #faf9f6;
   overflow: hidden;
-  border-left: 4px solid transparent;
+  border-left: 4px solid #d8d2c8;
   transition: border-left-color 0.2s;
 }
 
@@ -586,27 +586,12 @@ body.quotes-page {
 .warranty-badge-soon    { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
 .warranty-badge-active  { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
 
-.reschedule-btn {
-  width: 100%;
-  font-size: 11px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-}
-
 .client-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px;
-  cursor: default;
+  padding: 12px 12px 10px;
 }
 
-.client-card-info {
-  flex: 1;
-  min-width: 0;
+.client-card-top {
+  margin-bottom: 2px;
 }
 
 .client-card-name {
@@ -616,6 +601,7 @@ body.quotes-page {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 220px;
 }
 
 .client-card-rut {
@@ -626,10 +612,10 @@ body.quotes-page {
 }
 
 .client-card-details {
-  margin-top: 5px;
+  margin-top: 4px;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .client-detail-item {
@@ -637,12 +623,28 @@ body.quotes-page {
   color: #6a655e;
 }
 
+/* Fila inferior de la card del cliente */
+.client-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  gap: 8px;
+}
+
+.client-card-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
 .client-toggle-btn {
   flex-shrink: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 10px;
+  padding: 6px 10px;
   border: 1px solid #1a3a5c;
   border-radius: 4px;
   background: #fff;
@@ -651,10 +653,15 @@ body.quotes-page {
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
+  transition: background 0.15s;
 }
 
 .client-toggle-btn:hover {
   background: #eef2f7;
+}
+
+.client-toggle-btn[aria-expanded="true"] .client-toggle-icon {
+  transform: rotate(180deg);
 }
 
 .client-quote-count {
@@ -664,27 +671,12 @@ body.quotes-page {
 .client-toggle-icon {
   font-size: 9px;
   opacity: 0.7;
+  transition: transform 0.2s;
 }
 
 .client-quotes-list {
   border-top: 1px solid #e8e4de;
   background: #f4f2ee;
-}
-
-.client-card-actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-}
-
-.client-action-btn {
-  font-size: 11px;
-  padding: 6px 10px;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
 
 /* Botones deshabilitados */
