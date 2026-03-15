@@ -619,9 +619,11 @@ function renderACGrid() {
     const brandLogo = renderBrandLogo(brand);
     const displayName = brand ? `${ac.brand_model}` : ac.brand_model;
     const refBadge = ac.refrigerant === 'R32' ? 'badge-r32' : 'badge-r410';
-    const wifiLabel = ac.wifi === 'Yes' ? 'WiFi incluido' : ac.wifi === 'Optional' ? 'WiFi opcional' : 'WiFi universal';
-    const warYears = ac.warranty && ac.warranty.includes('3') ? 'Garantia 3 anos' : 'Garantia 1 ano';
-    const kitLabel = `Kit de instalacion ${ac.installation_kit}`;
+    const wifiLabel = (ac.wifi === true || ac.wifi === 'true' || ac.wifi === 'Yes') ? 'WiFi incluido' : 'Sin WiFi';
+    const warNum = Number(ac.warranty) || 1;
+    const warYears = `Garantía ${warNum} ${warNum === 1 ? 'año' : 'años'}`;
+    const kitNum = Number(ac.installation_kit) || 0;
+    const kitLabel = kitNum > 0 ? `Kit instalación ${kitNum} m` : 'Kit instalación incluido';
     const rankCount = window.RankingRepo ? (acRankings[window.RankingRepo.modelKey(ac.brand_model)] || 0) : 0;
     const rankBadge = (sortRankingMode !== 2 && rankCount > 0)
       ? `<span class="ranking-badge"><i class="fas fa-fire"></i> ${rankCount}</span>`

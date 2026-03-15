@@ -237,26 +237,29 @@
       <div class="form-group-cat">
         <label>Refrigerante</label>
         <select id="eqRefrigerante">
-          <option value="R32">R32</option>
+          <option value="R32" selected>R32</option>
           <option value="R410">R410</option>
           <option value="R410A">R410A</option>
         </select>
       </div>
       <div class="form-group-cat">
         <label>WiFi</label>
-        <input type="text" id="eqWifi" placeholder="Yes / No / Optional / Universal">
+        <select id="eqWifi">
+          <option value="true" selected>Sí — incluido</option>
+          <option value="false">No</option>
+        </select>
       </div>
       <div class="form-group-cat">
-        <label>Garantía</label>
-        <input type="text" id="eqGarantia" placeholder="1 year / 3 years">
+        <label>Garantía (años)</label>
+        <input type="number" id="eqGarantia" placeholder="1" min="1" max="10" step="1">
       </div>
-      <div class="form-group-cat full">
-        <label>Kit de instalación</label>
-        <input type="text" id="eqKitInstalacion" placeholder="Ej: Incluye 3 metros">
+      <div class="form-group-cat">
+        <label>Kit instalación (m)</label>
+        <input type="number" id="eqKitInstalacion" placeholder="3" min="0" step="1">
       </div>
-      <div class="form-group-cat full">
-        <label>Notas (opcional)</label>
-        <input type="text" id="eqNota" placeholder="Observaciones adicionales">
+      <div class="form-group-cat">
+        <label>Notas</label>
+        <input type="text" id="eqNota" placeholder="Opcional">
       </div>
 
       <div class="section-divider">Capacidades</div>
@@ -267,8 +270,9 @@
             <tr>
               <th>BTU</th>
               <th>Precio neto $</th>
-              <th>Precio c/IVA $</th>
-              <th>Voltaje</th>
+              <th>Precio c/IVA $
+                <span style="font-size:10px;font-weight:400;color:#9a9488;margin-left:3px;">(+19% auto)</span>
+              </th>
               <th></th>
             </tr>
           </thead>
@@ -501,12 +505,26 @@
     cap = cap || {};
     var tbody = $('capTableBody');
     var row = document.createElement('tr');
+
+    var btuVal = cap.btu_capacity  || '';
+    var netVal = cap.net_price     || '';
+    var taxVal = cap.price_with_tax || '';
+
     row.innerHTML =
-      '<td><input class="cap-input" type="number" placeholder="9000" min="0" step="1000" value="' + (cap.btu_capacity || '') + '" data-field="btu_capacity"></td>' +
-      '<td><input class="cap-input" type="number" placeholder="Neto" min="0" step="100" value="' + (cap.net_price || '') + '" data-field="net_price"></td>' +
-      '<td><input class="cap-input" type="number" placeholder="c/IVA" min="0" step="100" value="' + (cap.price_with_tax || '') + '" data-field="price_with_tax"></td>' +
-      '<td><input class="cap-input" type="text" placeholder="220V" style="width:60px;" value="' + escHtml(cap.voltaje || '') + '" data-field="voltaje"></td>' +
+      '<td style="width:30%"><input class="cap-input" type="number" placeholder="9000" min="0" step="1000" value="' + btuVal + '" data-field="btu_capacity" style="font-size:14px;font-weight:700;"></td>' +
+      '<td style="width:33%"><input class="cap-input" type="number" placeholder="Neto" min="0" step="100" value="' + netVal + '" data-field="net_price"></td>' +
+      '<td style="width:33%"><input class="cap-input" type="number" placeholder="c/IVA" min="0" step="100" value="' + taxVal + '" data-field="price_with_tax" style="background:rgba(26,58,92,0.04);"></td>' +
       '<td><button class="btn-del-cap" type="button" title="Eliminar fila"><i class="fas fa-times"></i></button></td>';
+
+    // Auto-calcular IVA (19%) al escribir en precio neto
+    var netInput = row.querySelector('[data-field="net_price"]');
+    var taxInput = row.querySelector('[data-field="price_with_tax"]');
+    netInput.addEventListener('input', function() {
+      var net = Math.round(Number(this.value) || 0);
+      if (net > 0) taxInput.value = Math.round(net * 1.19);
+      else taxInput.value = '';
+    });
+
     row.querySelector('.btn-del-cap').addEventListener('click', function() { tbody.removeChild(row); });
     tbody.appendChild(row);
   }
@@ -519,11 +537,8 @@
       var btu = Number(row.querySelector('[data-field="btu_capacity"]').value) || 0;
       var net = Number(row.querySelector('[data-field="net_price"]').value) || 0;
       var tax = Number(row.querySelector('[data-field="price_with_tax"]').value) || 0;
-      var vol = row.querySelector('[data-field="voltaje"]').value.trim();
       if (!btu && !net && !tax) return; // skip empty rows
-      var cap = { btu_capacity: btu, net_price: net, price_with_tax: tax };
-      if (vol) cap.voltaje = vol;
-      caps.push(cap);
+      caps.push({ btu_capacity: btu, net_price: net, price_with_tax: tax, voltaje: '220V' });
     });
     return caps;
   }
@@ -537,9 +552,9 @@
     $('eqModelo').value         = eq.brand_model || '';
     $('eqTipo').value           = eq.type || 'Split Inverter';
     $('eqRefrigerante').value   = eq.refrigerant || 'R32';
-    $('eqWifi').value           = eq.wifi || '';
-    $('eqGarantia').value       = eq.warranty || '';
-    $('eqKitInstalacion').value = eq.installation_kit || '';
+    $('eqWifi').value           = (eq.wifi === false || eq.wifi === 'false') ? 'false' : 'true';
+    $('eqGarantia').value       = eq.warranty != null ? Number(eq.warranty) || '' : '';
+    $('eqKitInstalacion').value = eq.installation_kit != null ? Number(eq.installation_kit) || '' : '';
     $('eqNota').value           = eq.nota || '';
     // Capacidades
     $('capTableBody').innerHTML = '';
@@ -564,9 +579,9 @@
       brand_model:      modelo,
       type:             $('eqTipo').value,
       refrigerant:      $('eqRefrigerante').value,
-      wifi:             $('eqWifi').value.trim() || 'No',
-      warranty:         $('eqGarantia').value.trim() || '1 year',
-      installation_kit: $('eqKitInstalacion').value.trim(),
+      wifi:             $('eqWifi').value === 'true',
+      warranty:         Number($('eqGarantia').value) || 1,
+      installation_kit: Number($('eqKitInstalacion').value) || 0,
       capacities:       caps
     };
     var nota = $('eqNota').value.trim();
