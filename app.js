@@ -2,7 +2,7 @@
 // ACCESORIOS — se cargan desde Firebase o desde el fallback demo
 // ============================================================
 
-const SERVICES = [
+let SERVICES = [
   { id:'instalacion', name:'Instalación nueva', desc:'Primera instalación del equipo', price:100000, icon:'fa-hammer' },
   { id:'mantencion', name:'Mantención', desc:'Limpieza y revisión general', price:30000, icon:'fa-screwdriver-wrench' },
   { id:'cambio', name:'Cambio + instalación', desc:'Retiro equipo antiguo + nuevo', price:120000, icon:'fa-arrow-right-arrow-left' },
@@ -171,10 +171,11 @@ async function init() {
   const activeToken = FIREBASE_CONNECTION.authToken || '';
 
   if (activeUrl) {
-    // Carga equipos y accesorios en paralelo desde Firebase
+    // Carga equipos, accesorios y servicios en paralelo desde Firebase
     await Promise.all([
       loadFromFirebase(activeUrl, activeNode, activeToken),
-      loadAccessoriesFromFirebase(activeUrl, activeToken)
+      loadAccessoriesFromFirebase(activeUrl, activeToken),
+      loadServicesFromFirebase(activeUrl, activeToken)
     ]);
   } else {
     loadDemoData();
@@ -300,6 +301,43 @@ async function loadAccessoriesFromFirebase(url, authToken = '') {
   } catch(e) {
     // Silencioso — mantiene los accesorios demo ya definidos
     console.warn('Accesorios: usando datos demo —', e.message);
+  }
+}
+
+/**
+ * Carga servicios desde Firebase Realtime Database (nodo: services).
+ * Si el nodo no existe o está vacío, usa los valores por defecto (SERVICES).
+ * Actualiza también los valores unitarios de instalación, mantención y reparación.
+ */
+async function loadServicesFromFirebase(url, authToken = '') {
+  const cleanUrl = url.replace(/\/$/, '');
+  const endpoint = authToken
+    ? `${cleanUrl}/services.json?auth=${authToken}`
+    : `${cleanUrl}/services.json`;
+
+  try {
+    const res = await fetch(endpoint);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const raw = await res.json();
+    if (!raw) return; // nodo vacío → conservar SERVICES por defecto
+
+    const data = normalizeFirebaseArrays(raw);
+    if (!Array.isArray(data) || data.length === 0) return;
+
+    SERVICES = data;
+
+    // Sincronizar variables unitarias con los precios de Firebase
+    const inst = data.find(s => s.id === 'instalacion');
+    const mant = data.find(s => s.id === 'mantencion');
+    const rep  = data.find(s => s.id === 'reparacion');
+    if (inst && inst.price != null) instalacionUnitValue = Number(inst.price) || instalacionUnitValue;
+    if (mant && mant.price != null) mantencionUnitValue  = Number(mant.price) || mantencionUnitValue;
+    if (rep  && rep.price  != null) repairUnitValue      = Number(rep.price)  || repairUnitValue;
+
+    renderServiceGrid();
+  } catch(e) {
+    // Silencioso — mantiene los servicios hardcodeados
+    console.warn('Servicios: usando datos por defecto —', e.message);
   }
 }
 

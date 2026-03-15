@@ -229,6 +229,8 @@
     const logged = !!user;
 
     if (historyAction) historyAction.disabled = !logged;
+    const catalogAction = $('menuOpenCatalog');
+    if (catalogAction) catalogAction.disabled = !logged;
     if (loginAction) loginAction.textContent = logged ? 'Cerrar sesión' : 'Iniciar sesión';
     if (sessionText) sessionText.textContent = logged ? `Sesión: ${user.email || user.uid}` : 'Sin sesión';
   }
@@ -330,6 +332,19 @@
           return;
         }
         window.location.href = 'quotes.html';
+      });
+    }
+
+    const catalogAction = $('menuOpenCatalog');
+    if (catalogAction) {
+      catalogAction.addEventListener('click', function() {
+        closeMenu();
+        if (!isAuthenticated()) {
+          showToastSafe('Inicia sesión para acceder al catálogo.', 'error');
+          openLoginModal();
+          return;
+        }
+        window.location.href = 'catalog.html';
       });
     }
 

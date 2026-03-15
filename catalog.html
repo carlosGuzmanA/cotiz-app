@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catálogo · CotizaClima</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Lato:wght@300;400;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="quotes.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  /* ── Sub-tabs ─────────────────────────────────────── */
+  .catalog-subtabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #d8d2c8;
+  }
+  .catalog-subtab {
+    flex: 1;
+    padding: 10px 8px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #6a655e;
+    cursor: pointer;
+    font-family: 'Lato', sans-serif;
+    transition: color 0.15s, border-color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .catalog-subtab:hover { color: #1a3a5c; }
+  .catalog-subtab.active { color: #1a3a5c; border-bottom-color: #1a3a5c; }
+
+  /* ── Toolbar ──────────────────────────────────────── */
+  .catalog-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .catalog-count { font-size: 12px; color: #6a655e; font-weight: 600; }
+
+  /* ── Card list ────────────────────────────────────── */
+  .cat-list { display: flex; flex-direction: column; }
+  .cat-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 14px;
+    background: #fff;
+    border-bottom: 1px solid #e8e3dc;
+    transition: background 0.12s;
+  }
+  .cat-card:first-child { border-radius: 6px 6px 0 0; }
+  .cat-card:last-child  { border-radius: 0 0 6px 6px; border-bottom: none; }
+  .cat-card:only-child  { border-radius: 6px; border-bottom: none; }
+  .cat-card:hover { background: #faf9f6; }
+  .cat-avatar {
+    flex-shrink: 0;
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+  }
+  .cat-avatar.eq  { background: rgba(26,58,92,0.1); color: #1a3a5c; font-family: 'Cormorant Garamond', serif; font-size: 22px; }
+  .cat-avatar.svc { background: rgba(201,168,76,0.18); color: #7a5c1e; font-size: 16px; }
+  .cat-avatar.ext { background: #f0ede8; color: #6a655e; font-size: 16px; }
+  .cat-body { flex: 1; min-width: 0; }
+  .cat-title { font-size: 13px; font-weight: 700; color: #1a1612; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat-sub   { font-size: 11px; color: #6a655e; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat-tags  { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; align-items: center; }
+  .cat-btu-chip {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px; font-weight: 600;
+    padding: 2px 6px; border-radius: 4px;
+    background: rgba(26,58,92,0.08); color: #1a3a5c;
+  }
+  .cat-id-code {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    background: rgba(26,58,92,0.06); color: #1a3a5c;
+    padding: 2px 5px; border-radius: 3px;
+  }
+  .catalog-badge {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    padding: 2px 7px; border-radius: 10px;
+    background: rgba(26,58,92,0.1); color: #1a3a5c;
+  }
+  .catalog-badge.r32  { background: rgba(45,90,61,0.12); color: #2d5a3d; }
+  .catalog-badge.r410 { background: rgba(139,46,15,0.1);  color: #8b2e0f; }
+  .cat-cat-pill {
+    font-size: 10px; padding: 2px 7px; border-radius: 10px;
+    background: #f0ede8; color: #6a655e; font-weight: 600;
+  }
+  .cat-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+  .cat-price { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600; color: #1a1612; white-space: nowrap; }
+  .cat-actions { display: flex; gap: 4px; }
+
+  /* ── Cap table / form modal ─────────────────────────── */
+  .cap-table { width:100%; border-collapse:collapse; margin-top:8px; }
+  .cap-table th { font-size:11px; color:#6a655e; text-align:left; padding:4px 6px; border-bottom:1px solid #d8d2c8; }
+  .cap-table td { padding:4px 4px; vertical-align:middle; }
+  .cap-input { width:100%; padding:5px 7px; border:1px solid #d8d2c8; border-radius:4px; font-size:12px; font-family:'Lato',sans-serif; background:#fff; color:#1a1612; box-sizing:border-box; }
+  .cap-input:focus { outline:none; border-color:#1a3a5c; }
+  .btn-add-cap { margin-top:6px; padding:5px 12px; font-size:12px; background:rgba(26,58,92,.08); border:1px solid #d8d2c8; border-radius:4px; cursor:pointer; color:#1a3a5c; font-family:'Lato',sans-serif; }
+  .btn-add-cap:hover { background:rgba(26,58,92,.14); }
+  .btn-del-cap { background:none; border:none; color:#8b2e0f; cursor:pointer; font-size:14px; padding:2px 6px; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .form-grid .full { grid-column:1/-1; }
+  .form-group-cat { display:flex; flex-direction:column; gap:4px; }
+  .form-group-cat label { font-size:11px; font-weight:700; color:#6a655e; text-transform:uppercase; letter-spacing:.4px; }
+  .form-group-cat input, .form-group-cat select, .form-group-cat textarea { padding:8px 10px; border:1px solid #d8d2c8; border-radius:4px; font-size:13px; font-family:'Lato',sans-serif; background:#fff; color:#1a1612; }
+  .form-group-cat input:focus, .form-group-cat select:focus, .form-group-cat textarea:focus { outline:none; border-color:#1a3a5c; }
+  .section-divider { font-size:11px; font-weight:700; color:#6a655e; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid #d8d2c8; padding-bottom:4px; margin:14px 0 8px; grid-column:1/-1; }
+  .svc-icon-preview { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:#1a3a5c; margin-top:4px; }
+
+  /* ── Misc ────────────────────────────────────────────── */
+  .empty-catalog { text-align:center; color:#9a9488; font-size:13px; padding:36px 20px; line-height:1.8; }
+  .warn-badge { font-size:10px; background:rgba(201,168,76,.15); color:#7a5c1e; border-radius:3px; padding:1px 6px; margin-left:4px; font-weight:700; }
+  .catalog-actions { display:flex; gap:6px; justify-content:flex-end; }
+</style>
+</head>
+<body class="quotes-page">
+<main class="quotes-shell">
+
+  <div class="quotes-topbar">
+    <button id="btnBackApp" class="quotes-nav-back" type="button" title="Volver a la app">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="quotes-topbar-center">
+      <h1 class="quotes-title">Catálogo</h1>
+      <p class="quotes-sub">Equipos y servicios</p>
+    </div>
+    <button id="btnLogout" class="quotes-nav-logout" type="button" title="Cerrar sesión">
+      <i class="fas fa-right-from-bracket"></i>
+    </button>
+  </div>
+
+  <!-- TABS DE SECCIÓN -->
+  <div class="section-tabs" role="tablist">
+    <button class="section-tab" type="button" role="tab" aria-selected="false" onclick="window.location.href='quotes.html'">
+      <i class="fas fa-clock-rotate-left"></i> Historial
+    </button>
+    <button class="section-tab" type="button" role="tab" aria-selected="false" onclick="window.location.href='clients.html'">
+      <i class="fas fa-users"></i> Clientes
+    </button>
+    <button class="section-tab active" type="button" role="tab" aria-selected="true" aria-current="page">
+      <i class="fas fa-box-open"></i> Catálogo
+    </button>
+  </div>
+
+  <p id="sessionInfo" class="quotes-sub" style="margin-bottom:12px;">Sin sesión</p>
+
+  <!-- SUB-TABS: Equipos / Servicios / Extras -->
+  <div class="catalog-subtabs">
+    <button id="tabEquipos" class="catalog-subtab active" onclick="showTab('equipos')">
+      <i class="fas fa-snowflake"></i> Equipos
+    </button>
+    <button id="tabServicios" class="catalog-subtab" onclick="showTab('servicios')">
+      <i class="fas fa-screwdriver-wrench"></i> Servicios
+    </button>
+    <button id="tabExtras" class="catalog-subtab" onclick="showTab('extras')">
+      <i class="fas fa-cart-shopping"></i> Extras
+    </button>
+  </div>
+
+  <!-- PANEL EQUIPOS -->
+  <div id="panelEquipos">
+    <div class="catalog-toolbar">
+      <span id="equipoCount" class="catalog-count"></span>
+      <button class="quotes-btn" id="btnAddEquipo"><i class="fas fa-plus"></i> Nuevo equipo</button>
+    </div>
+    <section class="list-card">
+      <div id="equiposList"><div class="empty-catalog"><div class="spinner"></div> Cargando...</div></div>
+    </section>
+  </div>
+
+  <!-- PANEL SERVICIOS -->
+  <div id="panelServicios" style="display:none;">
+    <div class="catalog-toolbar">
+      <span id="servicioCount" class="catalog-count"></span>
+      <button class="quotes-btn" id="btnAddServicio"><i class="fas fa-plus"></i> Nuevo servicio</button>
+    </div>
+    <section class="list-card">
+      <div id="serviciosList"><div class="empty-catalog"><div class="spinner"></div> Cargando...</div></div>
+    </section>
+  </div>
+
+  <!-- PANEL EXTRAS -->
+  <div id="panelExtras" style="display:none;">
+    <div class="catalog-toolbar">
+      <span id="extraCount" class="catalog-count"></span>
+      <button class="quotes-btn" id="btnAddExtra"><i class="fas fa-plus"></i> Nuevo extra</button>
+    </div>
+    <section class="list-card">
+      <div id="extrasList"><div class="empty-catalog"><div class="spinner"></div> Cargando...</div></div>
+    </section>
+  </div>
+
+  <p id="catalogStatus" class="status-line"></p>
+
+</main>
+
+<!-- MODAL: EQUIPO -->
+<div class="detail-overlay" id="equipoModal">
+  <div class="detail-sheet" style="max-height:90vh;overflow-y:auto;">
+    <div class="detail-handle"></div>
+    <div class="schedule-title" id="equipoModalTitle">Nuevo equipo</div>
+
+    <div class="form-grid" id="equipoForm">
+      <div class="form-group-cat">
+        <label>Marca</label>
+        <input type="text" id="eqMarca" placeholder="Ej: Midea">
+      </div>
+      <div class="form-group-cat">
+        <label>Modelo</label>
+        <input type="text" id="eqModelo" placeholder="Ej: ECOMASTER">
+      </div>
+      <div class="form-group-cat">
+        <label>Tipo</label>
+        <select id="eqTipo">
+          <option value="Split Inverter">Split Inverter</option>
+          <option value="Split Muro">Split Muro</option>
+          <option value="Piso Cielo">Piso Cielo</option>
+          <option value="Cassette">Cassette</option>
+          <option value="Ducto">Ducto</option>
+          <option value="Multisplit">Multisplit</option>
+        </select>
+      </div>
+      <div class="form-group-cat">
+        <label>Refrigerante</label>
+        <select id="eqRefrigerante">
+          <option value="R32">R32</option>
+          <option value="R410">R410</option>
+          <option value="R410A">R410A</option>
+        </select>
+      </div>
+      <div class="form-group-cat">
+        <label>WiFi</label>
+        <input type="text" id="eqWifi" placeholder="Yes / No / Optional / Universal">
+      </div>
+      <div class="form-group-cat">
+        <label>Garantía</label>
+        <input type="text" id="eqGarantia" placeholder="1 year / 3 years">
+      </div>
+      <div class="form-group-cat full">
+        <label>Kit de instalación</label>
+        <input type="text" id="eqKitInstalacion" placeholder="Ej: Incluye 3 metros">
+      </div>
+      <div class="form-group-cat full">
+        <label>Notas (opcional)</label>
+        <input type="text" id="eqNota" placeholder="Observaciones adicionales">
+      </div>
+
+      <div class="section-divider">Capacidades</div>
+
+      <div class="full" id="capacidadesContainer">
+        <table class="cap-table">
+          <thead>
+            <tr>
+              <th>BTU</th>
+              <th>Precio neto $</th>
+              <th>Precio c/IVA $</th>
+              <th>Voltaje</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="capTableBody"></tbody>
+        </table>
+        <button class="btn-add-cap" type="button" onclick="addCapacityRow()">
+          <i class="fas fa-plus"></i> Agregar capacidad
+        </button>
+      </div>
+    </div>
+
+    <div class="schedule-actions" style="margin-top:16px;">
+      <button class="quotes-btn schedule-confirm-btn" id="btnSaveEquipo">
+        <i class="fas fa-floppy-disk"></i> Guardar equipo
+      </button>
+      <button class="quotes-btn secondary" id="btnCancelEquipo">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: SERVICIO -->
+<div class="detail-overlay" id="servicioModal">
+  <div class="detail-sheet" style="max-height:80vh;overflow-y:auto;">
+    <div class="detail-handle"></div>
+    <div class="schedule-title" id="servicioModalTitle">Nuevo servicio</div>
+
+    <div class="form-grid" style="margin-top:12px;">
+      <div class="form-group-cat">
+        <label>ID (identificador único)</label>
+        <input type="text" id="svcId" placeholder="Ej: cambio_local">
+      </div>
+      <div class="form-group-cat">
+        <label>Precio base $</label>
+        <input type="number" id="svcPrecio" placeholder="0" min="0" step="1000">
+      </div>
+      <div class="form-group-cat full">
+        <label>Nombre</label>
+        <input type="text" id="svcNombre" placeholder="Ej: Instalación nueva">
+      </div>
+      <div class="form-group-cat full">
+        <label>Descripción</label>
+        <input type="text" id="svcDesc" placeholder="Breve descripción del servicio">
+      </div>
+      <div class="form-group-cat full">
+        <label>Icono (Font Awesome, sin el "fa-")</label>
+        <input type="text" id="svcIcono" placeholder="Ej: hammer" oninput="updateIconPreview()">
+        <div class="svc-icon-preview" id="svcIconPreview"><i class="fas fa-hammer"></i> Vista previa</div>
+      </div>
+    </div>
+
+    <div class="schedule-actions" style="margin-top:16px;">
+      <button class="quotes-btn schedule-confirm-btn" id="btnSaveServicio">
+        <i class="fas fa-floppy-disk"></i> Guardar servicio
+      </button>
+      <button class="quotes-btn secondary" id="btnCancelServicio">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: EXTRA / ACCESORIO -->
+<div class="detail-overlay" id="extraModal">
+  <div class="detail-sheet" style="max-height:80vh;overflow-y:auto;">
+    <div class="detail-handle"></div>
+    <div class="schedule-title" id="extraModalTitle">Nuevo extra</div>
+
+    <div class="form-grid" style="margin-top:12px;">
+      <div class="form-group-cat">
+        <label>ID (identificador único)</label>
+        <input type="text" id="extId" placeholder="Ej: kit_can_9k">
+      </div>
+      <div class="form-group-cat">
+        <label>Precio $</label>
+        <input type="number" id="extPrecio" placeholder="0" min="0" step="100">
+      </div>
+      <div class="form-group-cat full">
+        <label>Nombre</label>
+        <input type="text" id="extNombre" placeholder="Ej: Kit cañerías 9.000 BTU">
+      </div>
+      <div class="form-group-cat full">
+        <label>Descripción</label>
+        <input type="text" id="extDesc" placeholder="Descripción del accesorio">
+      </div>
+      <div class="form-group-cat">
+        <label>Icono (emoji)</label>
+        <input type="text" id="extIcono" placeholder="Ej: 🔩">
+      </div>
+      <div class="form-group-cat">
+        <label>Categoría</label>
+        <select id="extCategoria">
+          <option value="cañerias">Cañerías</option>
+          <option value="electrico">Eléctrico</option>
+          <option value="instalacion">Instalación</option>
+          <option value="mantencion">Mantención</option>
+          <option value="gas">Gas</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="schedule-actions" style="margin-top:16px;">
+      <button class="quotes-btn schedule-confirm-btn" id="btnSaveExtra">
+        <i class="fas fa-floppy-disk"></i> Guardar extra
+      </button>
+      <button class="quotes-btn secondary" id="btnCancelExtra">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="firebase-auth.js"></script>
+<script src="catalog-repo.js"></script>
+<script>
+(function() {
+  // IDs de servicios que tienen lógica especial en la app — advertir al borrar
+  var BUILTIN_SERVICE_IDS = ['instalacion', 'mantencion', 'cambio', 'reparacion', 'garantia', 'presupuesto'];
+
+  // Valores por defecto para sembrar la primera vez
+  var DEFAULT_SERVICES = [
+    { id:'instalacion', name:'Instalación nueva', desc:'Primera instalación del equipo', price:100000, icon:'fa-hammer' },
+    { id:'mantencion', name:'Mantención', desc:'Limpieza y revisión general', price:30000, icon:'fa-screwdriver-wrench' },
+    { id:'cambio', name:'Cambio + instalación', desc:'Retiro equipo antiguo + nuevo', price:120000, icon:'fa-arrow-right-arrow-left' },
+    { id:'reparacion', name:'Reparación', desc:'Diagnóstico y reparación de fallas', price:10000, icon:'fa-gear' },
+    { id:'garantia', name:'Visita garantía', desc:'Revisión por garantía vigente', price:0, icon:'fa-shield' },
+    { id:'presupuesto', name:'Solo presupuesto', desc:'Cotización sin instalación', price:0, icon:'fa-clipboard-list' }
+  ];
+
+  function $(id) { return document.getElementById(id); }
+  function fmtNum(n) { return Math.round(Number(n || 0)).toLocaleString('es-CL'); }
+
+  function showStatus(msg, isError) {
+    var el = $('catalogStatus');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.style.color = isError ? '#8b2e0f' : '#6a655e';
+  }
+
+  // ── Estado global ─────────────────────────────────────────
+  var allEquipment = [];
+  var allServices = [];
+  var allExtras = [];
+  var editingEquipoIdx = null; // índice en allEquipment, null = nuevo
+  var editingServicioIdx = null;
+  var editingExtraIdx = null;
+
+  // ── Tabs ──────────────────────────────────────────────────
+  window.showTab = function(tab) {
+    $('panelEquipos').style.display   = tab === 'equipos'   ? '' : 'none';
+    $('panelServicios').style.display = tab === 'servicios' ? '' : 'none';
+    $('panelExtras').style.display    = tab === 'extras'    ? '' : 'none';
+    ['equipos','servicios','extras'].forEach(function(t) {
+      $('tab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tab);
+    });
+  };
+
+  // ── Render ────────────────────────────────────────────────
+  function renderEquipos() {
+    var container = $('equiposList');
+    if (!allEquipment.length) {
+      container.innerHTML = '<div class="empty-catalog"><i class="fas fa-snowflake" style="font-size:28px;opacity:.18;display:block;margin-bottom:10px;"></i>No hay equipos en el catálogo.</div>';
+      var cnt = $('equipoCount'); if (cnt) cnt.textContent = '';
+      return;
+    }
+    var cnt = $('equipoCount');
+    if (cnt) cnt.textContent = allEquipment.length + ' ' + (allEquipment.length === 1 ? 'equipo' : 'equipos');
+    container.innerHTML = '<div class="cat-list">' +
+      allEquipment.map(function(eq, idx) {
+        var caps = Array.isArray(eq.capacities)
+          ? eq.capacities
+          : (window.CatalogRepo && window.CatalogRepo.normalizeArray ? window.CatalogRepo.normalizeArray(eq.capacities) : []);
+        var btuChips = caps.map(function(c) {
+          return '<span class="cat-btu-chip">' + escHtml(String((c.btu_capacity / 1000).toFixed(0)) + 'K') + '</span>';
+        }).join('');
+        var refCls = (eq.refrigerant || '').toLowerCase().replace(/a$/, '');
+        var refBadge = eq.refrigerant ? '<span class="catalog-badge ' + refCls + '">' + escHtml(eq.refrigerant) + '</span>' : '';
+        var letter = ((eq.marca || eq.brand_model || '?').charAt(0)).toUpperCase();
+        return '<div class="cat-card">' +
+          '<div class="cat-avatar eq">' + escHtml(letter) + '</div>' +
+          '<div class="cat-body">' +
+            '<div class="cat-title">' + escHtml(eq.brand_model || '—') + '</div>' +
+            '<div class="cat-sub">' + escHtml(eq.marca || '') + (eq.type ? ' · ' + escHtml(eq.type) : '') + '</div>' +
+            '<div class="cat-tags">' + btuChips + refBadge + '</div>' +
+          '</div>' +
+          '<div class="cat-right">' +
+            '<div class="cat-actions">' +
+              '<button class="quotes-btn secondary icon-btn" data-action="edit-equipo" data-idx="' + idx + '" title="Editar"><i class="fas fa-pen-to-square"></i></button>' +
+              '<button class="quotes-btn danger icon-btn" data-action="del-equipo" data-idx="' + idx + '" title="Eliminar"><i class="fas fa-trash"></i></button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+
+  function renderServicios() {
+    var container = $('serviciosList');
+    if (!allServices.length) {
+      container.innerHTML = '<div class="empty-catalog"><i class="fas fa-screwdriver-wrench" style="font-size:28px;opacity:.18;display:block;margin-bottom:10px;"></i>No hay servicios.</div>';
+      var cnt = $('servicioCount'); if (cnt) cnt.textContent = '';
+      return;
+    }
+    var cnt = $('servicioCount');
+    if (cnt) cnt.textContent = allServices.length + ' ' + (allServices.length === 1 ? 'servicio' : 'servicios');
+    container.innerHTML = '<div class="cat-list">' +
+      allServices.map(function(svc, idx) {
+        var isBuiltin = BUILTIN_SERVICE_IDS.indexOf(svc.id) !== -1;
+        var icon = (svc.icon || 'fa-wrench').replace(/^fa-/, '');
+        var priceHtml = svc.price > 0
+          ? '<div class="cat-price">$' + fmtNum(svc.price) + '</div>'
+          : '<div class="cat-price" style="color:#9a9488;font-size:11px;">Gratis</div>';
+        return '<div class="cat-card">' +
+          '<div class="cat-avatar svc"><i class="fas fa-' + escHtml(icon) + '"></i></div>' +
+          '<div class="cat-body">' +
+            '<div class="cat-title">' + escHtml(svc.name || '—') + (isBuiltin ? '<span class="warn-badge">integrado</span>' : '') + '</div>' +
+            '<div class="cat-sub">' + escHtml(svc.desc || '') + '</div>' +
+            '<div class="cat-tags"><span class="cat-id-code">' + escHtml(svc.id || '') + '</span></div>' +
+          '</div>' +
+          '<div class="cat-right">' +
+            priceHtml +
+            '<div class="cat-actions">' +
+              '<button class="quotes-btn secondary icon-btn" data-action="edit-svc" data-idx="' + idx + '" title="Editar"><i class="fas fa-pen-to-square"></i></button>' +
+              '<button class="quotes-btn danger icon-btn" data-action="del-svc" data-idx="' + idx + '" title="Eliminar"><i class="fas fa-trash"></i></button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+
+  // ── Capacidades dinámicas ──────────────────────────────────
+  function addCapacityRow(cap) {
+    cap = cap || {};
+    var tbody = $('capTableBody');
+    var row = document.createElement('tr');
+    row.innerHTML =
+      '<td><input class="cap-input" type="number" placeholder="9000" min="0" step="1000" value="' + (cap.btu_capacity || '') + '" data-field="btu_capacity"></td>' +
+      '<td><input class="cap-input" type="number" placeholder="Neto" min="0" step="100" value="' + (cap.net_price || '') + '" data-field="net_price"></td>' +
+      '<td><input class="cap-input" type="number" placeholder="c/IVA" min="0" step="100" value="' + (cap.price_with_tax || '') + '" data-field="price_with_tax"></td>' +
+      '<td><input class="cap-input" type="text" placeholder="220V" style="width:60px;" value="' + escHtml(cap.voltaje || '') + '" data-field="voltaje"></td>' +
+      '<td><button class="btn-del-cap" type="button" title="Eliminar fila"><i class="fas fa-times"></i></button></td>';
+    row.querySelector('.btn-del-cap').addEventListener('click', function() { tbody.removeChild(row); });
+    tbody.appendChild(row);
+  }
+  window.addCapacityRow = addCapacityRow;
+
+  function readCapacities() {
+    var rows = $('capTableBody').querySelectorAll('tr');
+    var caps = [];
+    rows.forEach(function(row) {
+      var btu = Number(row.querySelector('[data-field="btu_capacity"]').value) || 0;
+      var net = Number(row.querySelector('[data-field="net_price"]').value) || 0;
+      var tax = Number(row.querySelector('[data-field="price_with_tax"]').value) || 0;
+      var vol = row.querySelector('[data-field="voltaje"]').value.trim();
+      if (!btu && !net && !tax) return; // skip empty rows
+      var cap = { btu_capacity: btu, net_price: net, price_with_tax: tax };
+      if (vol) cap.voltaje = vol;
+      caps.push(cap);
+    });
+    return caps;
+  }
+
+  // ── Modal Equipo ──────────────────────────────────────────
+  function openEquipoModal(idx) {
+    editingEquipoIdx = (idx !== undefined && idx !== null) ? idx : null;
+    $('equipoModalTitle').textContent = editingEquipoIdx !== null ? 'Editar equipo' : 'Nuevo equipo';
+    var eq = editingEquipoIdx !== null ? allEquipment[editingEquipoIdx] : {};
+    $('eqMarca').value          = eq.marca || '';
+    $('eqModelo').value         = eq.brand_model || '';
+    $('eqTipo').value           = eq.type || 'Split Inverter';
+    $('eqRefrigerante').value   = eq.refrigerant || 'R32';
+    $('eqWifi').value           = eq.wifi || '';
+    $('eqGarantia').value       = eq.warranty || '';
+    $('eqKitInstalacion').value = eq.installation_kit || '';
+    $('eqNota').value           = eq.nota || '';
+    // Capacidades
+    $('capTableBody').innerHTML = '';
+    (eq.capacities || [{ btu_capacity: '', net_price: '', price_with_tax: '' }]).forEach(addCapacityRow);
+    $('equipoModal').classList.add('open');
+  }
+
+  function closeEquipoModal() {
+    $('equipoModal').classList.remove('open');
+    editingEquipoIdx = null;
+  }
+
+  async function saveEquipo() {
+    var marca = $('eqMarca').value.trim();
+    var modelo = $('eqModelo').value.trim();
+    if (!marca || !modelo) { alert('Marca y modelo son obligatorios.'); return; }
+    var caps = readCapacities();
+    if (!caps.length) { alert('Agrega al menos una capacidad (BTU).'); return; }
+
+    var eq = {
+      marca:            marca,
+      brand_model:      modelo,
+      type:             $('eqTipo').value,
+      refrigerant:      $('eqRefrigerante').value,
+      wifi:             $('eqWifi').value.trim() || 'No',
+      warranty:         $('eqGarantia').value.trim() || '1 year',
+      installation_kit: $('eqKitInstalacion').value.trim(),
+      capacities:       caps
+    };
+    var nota = $('eqNota').value.trim();
+    if (nota) eq.nota = nota;
+
+    if (editingEquipoIdx !== null) {
+      allEquipment[editingEquipoIdx] = eq;
+    } else {
+      allEquipment.push(eq);
+    }
+
+    try {
+      var idToken = await window.FirebaseAuthService.getValidIdToken();
+      await window.CatalogRepo.saveEquipment(idToken, allEquipment);
+      closeEquipoModal();
+      renderEquipos();
+      showStatus((editingEquipoIdx !== null ? 'Equipo guardado.' : 'Equipo creado.'), false);
+    } catch (e) {
+      alert('Error al guardar: ' + (e.message || 'Error desconocido'));
+      // Revertir cambio local si falla
+      if (editingEquipoIdx !== null) {
+        allEquipment[editingEquipoIdx] = allEquipment[editingEquipoIdx]; // ya está asignado, no hay nada que revertir
+      } else {
+        allEquipment.pop();
+      }
+    }
+  }
+
+  async function deleteEquipo(idx) {
+    var eq = allEquipment[idx];
+    if (!eq) return;
+    var ok = confirm('¿Eliminar "' + (eq.marca ? eq.marca + ' ' : '') + eq.brand_model + '"? Esta acción no se puede deshacer.');
+    if (!ok) return;
+    allEquipment.splice(idx, 1);
+    try {
+      var idToken = await window.FirebaseAuthService.getValidIdToken();
+      await window.CatalogRepo.saveEquipment(idToken, allEquipment);
+      renderEquipos();
+      showStatus('Equipo eliminado.', false);
+    } catch (e) {
+      showStatus('Error al eliminar: ' + (e.message || 'Error'), true);
+    }
+  }
+
+  // ── Modal Servicio ─────────────────────────────────────────
+  function openServicioModal(idx) {
+    editingServicioIdx = (idx !== undefined && idx !== null) ? idx : null;
+    $('servicioModalTitle').textContent = editingServicioIdx !== null ? 'Editar servicio' : 'Nuevo servicio';
+    var svc = editingServicioIdx !== null ? allServices[editingServicioIdx] : {};
+    $('svcId').value     = svc.id || '';
+    $('svcId').disabled  = editingServicioIdx !== null; // no cambiar ID en edición
+    $('svcNombre').value = svc.name || '';
+    $('svcDesc').value   = svc.desc || '';
+    $('svcPrecio').value = svc.price !== undefined ? svc.price : '';
+    var icon = (svc.icon || 'fa-hammer').replace(/^fa-/, '');
+    $('svcIcono').value  = icon;
+    updateIconPreview();
+    $('servicioModal').classList.add('open');
+  }
+
+  function closeServicioModal() {
+    $('servicioModal').classList.remove('open');
+    editingServicioIdx = null;
+  }
+
+  window.updateIconPreview = function() {
+    var val = ($('svcIcono').value || '').trim().replace(/^fa-/, '');
+    var preview = $('svcIconPreview');
+    preview.innerHTML = val
+      ? '<i class="fas fa-' + escHtml(val) + '"></i> Vista previa'
+      : 'Vista previa';
+  };
+
+  async function saveServicio() {
+    var id     = $('svcId').value.trim();
+    var nombre = $('svcNombre').value.trim();
+    if (!id)     { alert('El ID es obligatorio.'); return; }
+    if (!nombre) { alert('El nombre es obligatorio.'); return; }
+
+    // Verificar ID duplicado en nueva creación
+    if (editingServicioIdx === null) {
+      var exists = allServices.some(function(s) { return s.id === id; });
+      if (exists) { alert('Ya existe un servicio con ese ID.'); return; }
+    }
+
+    var iconVal = ($('svcIcono').value || '').trim().replace(/^fa-/, '');
+    var svc = {
+      id:    id,
+      name:  nombre,
+      desc:  $('svcDesc').value.trim(),
+      price: Number($('svcPrecio').value) || 0,
+      icon:  'fa-' + (iconVal || 'wrench')
+    };
+
+    if (editingServicioIdx !== null) {
+      allServices[editingServicioIdx] = svc;
+    } else {
+      allServices.push(svc);
+    }
+
+    try {
+      var idToken = await window.FirebaseAuthService.getValidIdToken();
+      await window.CatalogRepo.saveServices(idToken, allServices);
+      closeServicioModal();
+      renderServicios();
+      showStatus((editingServicioIdx !== null ? 'Servicio guardado.' : 'Servicio creado.'), false);
+    } catch (e) {
+      alert('Error al guardar: ' + (e.message || 'Error desconocido'));
+      if (editingServicioIdx === null) allServices.pop();
+    }
+  }
+
+  async function deleteServicio(idx) {
+    var svc = allServices[idx];
+    if (!svc) return;
+    var isBuiltin = BUILTIN_SERVICE_IDS.indexOf(svc.id) !== -1;
+    var msg = '¿Eliminar el servicio "' + svc.name + '"?' +
+      (isBuiltin ? '\n\n⚠️ Este servicio tiene lógica integrada en la app. Eliminarlo puede afectar la generación de cotizaciones.' : '') +
+      '\n\nEsta acción no se puede deshacer.';
+    if (!confirm(msg)) return;
+    allServices.splice(idx, 1);
+    try {
+      var idToken = await window.FirebaseAuthService.getValidIdToken();
+      await window.CatalogRepo.saveServices(idToken, allServices);
+      renderServicios();
+      showStatus('Servicio eliminado.', false);
+    } catch (e) {
+      showStatus('Error al eliminar: ' + (e.message || 'Error'), true);
+    }
+  }
+
+  // ── Render Extras ─────────────────────────────────────────
+  // Mismo mapa de iconos que app.js (ACC_ICON_MAP + getAccIcon)
+  var ACC_ICON_MAP = {
+    kit_can_9k:        'fa-ruler-combined',
+    kit_can_12_18k:    'fa-ruler-combined',
+    kit_can_24k:       'fa-ruler-combined',
+    cordon_15:         'fa-bolt',
+    cordon_25:         'fa-bolt',
+    soporte_techo:     'fa-thumbtack',
+    kit_drenaje:       'fa-droplet',
+    breaker_16a:       'fa-plug',
+    mantencion_lavado: 'fa-spray-can-sparkles',
+    gas_r410_12k:      'fa-temperature-low',
+    gas_r410_18_32k:   'fa-temperature-low',
+    gas_r32_12k:       'fa-temperature-low',
+    gas_r32_18_32k:    'fa-temperature-low',
+    _cat_cañerias:     'fa-ruler-combined',
+    _cat_electrico:    'fa-bolt',
+    _cat_instalacion:  'fa-screwdriver-wrench',
+    _cat_mantencion:   'fa-spray-can-sparkles',
+    _cat_gas:          'fa-temperature-low'
+  };
+  function getAccIcon(acc) {
+    return ACC_ICON_MAP[acc.id]
+      || ACC_ICON_MAP['_cat_' + (acc.categoria || '')]
+      || 'fa-box';
+  }
+
+  function renderExtras() {
+    var container = $('extrasList');
+    if (!allExtras.length) {
+      container.innerHTML = '<div class="empty-catalog"><i class="fas fa-cart-shopping" style="font-size:28px;opacity:.18;display:block;margin-bottom:10px;"></i>No hay extras en el catálogo.</div>';
+      var cnt = $('extraCount'); if (cnt) cnt.textContent = '';
+      return;
+    }
+    var cnt = $('extraCount');
+    if (cnt) cnt.textContent = allExtras.length + ' ' + (allExtras.length === 1 ? 'extra' : 'extras');
+    var catLabel = { 'cañerias':'Cañerías','electrico':'Eléctrico','instalacion':'Instalación','mantencion':'Mantención','gas':'Gas','otro':'Otro' };
+    container.innerHTML = '<div class="cat-list">' +
+      allExtras.map(function(ext, idx) {
+        var pill = ext.categoria ? '<span class="cat-cat-pill">' + escHtml(catLabel[ext.categoria] || ext.categoria) + '</span>' : '';
+        var iconCls = getAccIcon(ext);
+        return '<div class="cat-card">' +
+          '<div class="cat-avatar ext"><i class="fas ' + escHtml(iconCls) + '"></i></div>' +
+          '<div class="cat-body">' +
+            '<div class="cat-title">' + escHtml(ext.name || '—') + '</div>' +
+            '<div class="cat-sub">' + escHtml(ext.desc || '') + '</div>' +
+            (pill ? '<div class="cat-tags">' + pill + '<span class="cat-id-code">' + escHtml(ext.id || '') + '</span></div>' : '') +
+          '</div>' +
+          '<div class="cat-right">' +
+            '<div class="cat-price">$' + fmtNum(ext.price) + '</div>' +
+            '<div class="cat-actions">' +
+              '<button class="quotes-btn secondary icon-btn" data-action="edit-extra" data-idx="' + idx + '" title="Editar"><i class="fas fa-pen-to-square"></i></button>' +
+              '<button class="quotes-btn danger icon-btn" data-action="del-extra" data-idx="' + idx + '" title="Eliminar"><i class="fas fa-trash"></i></button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+
+  // ── Modal Extra ───────────────────────────────────────────
+  function openExtraModal(idx) {
+    editingExtraIdx = (idx !== undefined && idx !== null) ? idx : null;
+    $('extraModalTitle').textContent = editingExtraIdx !== null ? 'Editar extra' : 'Nuevo extra';
+    var ext = editingExtraIdx !== null ? allExtras[editingExtraIdx] : {};
+    $('extId').value       = ext.id || '';
+    $('extId').disabled    = editingExtraIdx !== null;
+    $('extNombre').value   = ext.name || '';
+    $('extDesc').value     = ext.desc || '';
+    $('extPrecio').value   = ext.price !== undefined ? ext.price : '';
+    $('extIcono').value    = ext.icon || '';
+    $('extCategoria').value = ext.categoria || 'instalacion';
+    $('extraModal').classList.add('open');
+  }
+
+  function closeExtraModal() {
+    $('extraModal').classList.remove('open');
+    editingExtraIdx = null;
+  }
+
+  async function saveExtra() {
+    var id     = $('extId').value.trim();
+    var nombre = $('extNombre').value.trim();
+    if (!id)     { alert('El ID es obligatorio.'); return; }
+    if (!nombre) { alert('El nombre es obligatorio.'); return; }
+    if (editingExtraIdx === null) {
+      var exists = allExtras.some(function(e) { return e.id === id; });
+      if (exists) { alert('Ya existe un extra con ese ID.'); return; }
+    }
+    var ext = {
+      id:        id,
+      name:      nombre,
+      desc:      $('extDesc').value.trim(),
+      price:     Number($('extPrecio').value) || 0,
+      icon:      $('extIcono').value.trim() || '🔧',
+      color:     'rgba(26,58,92,0.08)',
+      categoria: $('extCategoria').value
+    };
+    if (editingExtraIdx !== null) {
+      allExtras[editingExtraIdx] = ext;
+    } else {
+      allExtras.push(ext);
+    }
+    try {
+      var idToken = await window.FirebaseAuthService.getValidIdToken();
+      await window.CatalogRepo.saveAccessories(idToken, allExtras);
+      closeExtraModal();
+      renderExtras();
+      showStatus((editingExtraIdx !== null ? 'Extra guardado.' : 'Extra creado.'), false);
+    } catch (e) {
+      alert('Error al guardar: ' + (e.message || 'Error desconocido'));
+      if (editingExtraIdx === null) allExtras.pop();
+    }
+  }
+
+  async function deleteExtra(idx) {
+    var ext = allExtras[idx];
+    if (!ext) return;
+    if (!confirm('¿Eliminar "' + ext.name + '"? Esta acción no se puede deshacer.')) return;
+    allExtras.splice(idx, 1);
+    try {
+      var idToken = await window.FirebaseAuthService.getValidIdToken();
+      await window.CatalogRepo.saveAccessories(idToken, allExtras);
+      renderExtras();
+      showStatus('Extra eliminado.', false);
+    } catch (e) {
+      showStatus('Error al eliminar: ' + (e.message || 'Error'), true);
+    }
+  }
+
+  // ── Eventos listas (delegación) ───────────────────────────
+  $('extrasList').addEventListener('click', function(e) {
+    var editBtn = e.target.closest('[data-action="edit-extra"]');
+    if (editBtn) { openExtraModal(Number(editBtn.dataset.idx)); return; }
+    var delBtn = e.target.closest('[data-action="del-extra"]');
+    if (delBtn) { deleteExtra(Number(delBtn.dataset.idx)); }
+  });
+
+  $('equiposList').addEventListener('click', function(e) {
+    var editBtn = e.target.closest('[data-action="edit-equipo"]');
+    if (editBtn) { openEquipoModal(Number(editBtn.dataset.idx)); return; }
+    var delBtn = e.target.closest('[data-action="del-equipo"]');
+    if (delBtn) { deleteEquipo(Number(delBtn.dataset.idx)); }
+  });
+
+  $('serviciosList').addEventListener('click', function(e) {
+    var editBtn = e.target.closest('[data-action="edit-svc"]');
+    if (editBtn) { openServicioModal(Number(editBtn.dataset.idx)); return; }
+    var delBtn = e.target.closest('[data-action="del-svc"]');
+    if (delBtn) { deleteServicio(Number(delBtn.dataset.idx)); }
+  });
+
+  // ── Escapes ───────────────────────────────────────────────
+  function escHtml(str) {
+    return String(str || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  // ── Bootstrap ─────────────────────────────────────────────
+  async function bootstrap() {
+    if (!window.FirebaseAuthService) {
+      window.location.href = 'index.html'; return;
+    }
+    var user = window.FirebaseAuthService.getCurrentUser();
+    var idToken = await window.FirebaseAuthService.getValidIdToken().catch(function() { return null; });
+    if (!user || !idToken) {
+      window.location.href = 'index.html'; return;
+    }
+    $('sessionInfo').textContent = 'Sesión: ' + (user.email || user.uid);
+    showStatus('Cargando catálogo...', false);
+
+    try {
+      var results = await Promise.all([
+        window.CatalogRepo.listEquipment(idToken),
+        window.CatalogRepo.listAccessories(idToken)
+      ]);
+      allEquipment = results[0] || [];
+
+      // Servicios se mantienen locales en esta vista; no se consultan en Firebase.
+      allServices = DEFAULT_SERVICES.slice();
+      allExtras = results[1] || [];
+      showStatus('', false);
+
+      renderEquipos();
+      renderServicios();
+      renderExtras();
+    } catch (e) {
+      showStatus('Error al cargar: ' + (e.message || 'Error desconocido.'), true);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    $('btnBackApp').addEventListener('click', function() { window.location.href = 'index.html'; });
+    $('btnLogout').addEventListener('click', function() {
+      if (window.FirebaseAuthService) window.FirebaseAuthService.signOut();
+      window.location.href = 'index.html';
+    });
+
+    $('btnAddEquipo').addEventListener('click', function()   { openEquipoModal(null); });
+    $('btnAddServicio').addEventListener('click', function() { openServicioModal(null); });
+    $('btnAddExtra').addEventListener('click', function()    { openExtraModal(null); });
+
+    $('btnSaveEquipo').addEventListener('click', saveEquipo);
+    $('btnCancelEquipo').addEventListener('click', closeEquipoModal);
+    $('equipoModal').addEventListener('click', function(e) { if (e.target === $('equipoModal')) closeEquipoModal(); });
+
+    $('btnSaveServicio').addEventListener('click', saveServicio);
+    $('btnCancelServicio').addEventListener('click', closeServicioModal);
+    $('servicioModal').addEventListener('click', function(e) { if (e.target === $('servicioModal')) closeServicioModal(); });
+
+    $('btnSaveExtra').addEventListener('click', saveExtra);
+    $('btnCancelExtra').addEventListener('click', closeExtraModal);
+    $('extraModal').addEventListener('click', function(e) { if (e.target === $('extraModal')) closeExtraModal(); });
+
+    bootstrap();
+  });
+})();
+</script>
+</body>
+</html>
