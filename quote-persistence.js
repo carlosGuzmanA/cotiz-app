@@ -228,9 +228,7 @@
     const user = auth ? auth.getCurrentUser() : null;
     const logged = !!user;
 
-    const clientsAction = $('menuOpenClients');
     if (historyAction) historyAction.disabled = !logged;
-    if (clientsAction) clientsAction.disabled = !logged;
     if (loginAction) loginAction.textContent = logged ? 'Cerrar sesión' : 'Iniciar sesión';
     if (sessionText) sessionText.textContent = logged ? `Sesión: ${user.email || user.uid}` : 'Sin sesión';
   }
@@ -323,24 +321,11 @@
       });
     }
 
-    const clientsAction = $('menuOpenClients');
-    if (clientsAction) {
-      clientsAction.addEventListener('click', function() {
-        closeMenu();
-        if (!isAuthenticated()) {
-          showToastSafe('Inicia sesión para ver los clientes.', 'error');
-          openLoginModal();
-          return;
-        }
-        window.location.href = 'clients.html';
-      });
-    }
-
     if (historyAction) {
       historyAction.addEventListener('click', function() {
         closeMenu();
         if (!isAuthenticated()) {
-          showToastSafe('Inicia sesión para ver el historial.', 'error');
+          showToastSafe('Inicia sesión para ver el historial y clientes.', 'error');
           openLoginModal();
           return;
         }
