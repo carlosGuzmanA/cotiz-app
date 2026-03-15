@@ -445,6 +445,38 @@
       }
     }
 
+    async function deleteClient(clientId) {
+      var client = allClients.find(function(c) { return c.id === clientId; });
+      var clientName = client ? (client.name || 'este cliente') : 'este cliente';
+      var clientQuotes = quotesByClientId[clientId] || [];
+      var quoteCount = clientQuotes.length;
+      var msg = '¿Eliminar a ' + clientName + ' del directorio?' +
+        (quoteCount > 0
+          ? ' También se eliminarán sus ' + quoteCount + ' cotización(es) asociada(s).'
+          : '') +
+        ' Esta acción no se puede deshacer.';
+      var ok = window.confirm(msg);
+      if (!ok) return;
+      try {
+        var user = window.FirebaseAuthService.getCurrentUser();
+        var idToken = await window.FirebaseAuthService.getValidIdToken();
+        // Eliminar cotizaciones asociadas primero
+        await Promise.all(clientQuotes.map(function(q) {
+          return window.QuotesRepo.deleteQuote(user.uid, idToken, q.id);
+        }));
+        // Eliminar cliente del directorio
+        await window.ClientRepo.deleteClient(user.uid, idToken, clientId);
+        // Actualizar estado local
+        clientQuotes.forEach(function(q) { delete quoteById[q.id]; });
+        allClients = allClients.filter(function(c) { return c.id !== clientId; });
+        rebuildQuotesByClient();
+        renderFiltered($('clientsSearchInput').value);
+        showStatus('Cliente y ' + quoteCount + ' cotización(es) eliminados.', false);
+      } catch (e) {
+        showStatus(e.message || 'Error al eliminar cliente.', true);
+      }
+    }
+
     async function deleteQuote(id) {
       var ok = window.confirm('¿Eliminar esta cotización? Esta acción no se puede deshacer.');
       if (!ok) return;
@@ -634,6 +666,7 @@
             '<div class="client-card-actions">' +
               callBtnCard + wazeBtnCard +
               '<button class="quotes-btn secondary icon-btn" data-action="edit-client" data-client-id="' + client.id + '" title="Editar datos del cliente"><i class="fas fa-user-pen"></i></button>' +
+              '<button class="quotes-btn danger icon-btn" data-action="delete-client" data-client-id="' + client.id + '" title="Eliminar cliente"><i class="fas fa-user-minus"></i></button>' +
             '</div>' +
             '<button class="client-toggle-btn" data-client-id="' + client.id + '" aria-expanded="false">' +
               '<span class="client-quote-count">' + countLabel + '</span>' +
@@ -787,6 +820,13 @@
       var duplicateBtn = evt.target.closest('button[data-action="duplicate"]');
       if (duplicateBtn) {
         await duplicateQuote(duplicateBtn.dataset.id);
+        return;
+      }
+
+      // "Eliminar cliente" button
+      var deleteClientBtn = evt.target.closest('button[data-action="delete-client"]');
+      if (deleteClientBtn) {
+        await deleteClient(deleteClientBtn.dataset.clientId);
         return;
       }
 

@@ -155,12 +155,18 @@
     }
   }
 
+  async function deleteClient(uid, idToken, clientId) {
+    if (!uid || !clientId) throw new Error('Parámetros inválidos para eliminar cliente.');
+    await request('clients/' + uid + '/' + clientId, idToken, { method: 'DELETE' });
+  }
+
   window.ClientRepo = {
     normalizeRut,
     resolveClientId,
     listClients,
     saveClientWithId,
     addQuoteToClient,
-    syncClientForQuote
+    syncClientForQuote,
+    deleteClient
   };
 })();
