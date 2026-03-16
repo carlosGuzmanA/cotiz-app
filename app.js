@@ -1837,6 +1837,7 @@ window.CotizPersistenceBridge = {
   refreshQuoteNumberAfterLogin,
   generateQuoteNumber,
   resetAll,
+  validateQuoteForGeneration,
   getActiveQuoteStatus: () => activeQuoteStatus,
   setActiveQuoteStatus: (s) => { activeQuoteStatus = s || 'draft'; }
 };

@@ -155,12 +155,16 @@
 
     const original = window.generatePDF;
     window.generatePDF = async function patchedGeneratePDF() {
+      // Validar antes de guardar o generar
+      const bridge = getBridge();
+      if (bridge && typeof bridge.validateQuoteForGeneration === 'function') {
+        if (!bridge.validateQuoteForGeneration()) return;
+      }
       const auth = await getAuthContext(false);
       if (!auth) {
         const choice = await showSavePrompt();
         if (choice === 'login') { openLoginModal(); return; }
         await original();
-        const bridge = getBridge();
         if (bridge && typeof bridge.resetAll === 'function') bridge.resetAll();
         return;
       }
@@ -174,7 +178,6 @@
       if (saved) {
         showToastSafe('PDF generado y cotización guardada', 'success');
       }
-      const bridge = getBridge();
       if (bridge && typeof bridge.resetAll === 'function') bridge.resetAll();
     };
 
@@ -187,12 +190,16 @@
 
     const original = window.sharePDF;
     window.sharePDF = async function patchedSharePDF() {
+      // Validar antes de guardar o compartir
+      const bridge = getBridge();
+      if (bridge && typeof bridge.validateQuoteForGeneration === 'function') {
+        if (!bridge.validateQuoteForGeneration()) return;
+      }
       const auth = await getAuthContext(false);
       if (!auth) {
         const choice = await showSavePrompt();
         if (choice === 'login') { openLoginModal(); return; }
         await original();
-        const bridge = getBridge();
         if (bridge && typeof bridge.resetAll === 'function') bridge.resetAll();
         return;
       }
@@ -202,7 +209,6 @@
         // persistencia silenciosa; no bloquear flujo de compartir
       }
       await original();
-      const bridge = getBridge();
       if (bridge && typeof bridge.resetAll === 'function') bridge.resetAll();
     };
 
