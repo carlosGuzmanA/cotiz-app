@@ -35,7 +35,7 @@
         <div id="menuSessionText" class="hamburger-session">Sin sesión</div>
       </div>
     </div>
-    <div class="logo-text">Cotiza<span>Clima</span><sup class="app-version">v2</sup></div>
+    <div class="logo-text">Cotiza<span>Clima</span><sup class="app-version">v3</sup></div>
   </div>
   <div class="header-actions">
     <div id="fbStatusDot" title="Sin conexión Firebase — usando datos demo" style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.25);flex-shrink:0;transition:background 0.4s;"></div>
@@ -531,6 +531,17 @@
         .catch(function(err) { console.warn('SW registration failed:', err); });
     });
   }
+  // Leer CACHE_VERSION desde sw.js y actualizar el badge
+  fetch('./sw.js')
+    .then(function(r) { return r.text(); })
+    .then(function(text) {
+      var m = text.match(/const CACHE_VERSION\s*=\s*['"](.*?)['"]/);
+      if (m) {
+        var badge = document.querySelector('.app-version');
+        if (badge) badge.textContent = m[1];
+      }
+    })
+    .catch(function() {});
 </script>
 </body>
 </html>
