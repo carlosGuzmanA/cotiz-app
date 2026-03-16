@@ -55,7 +55,9 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(PRECACHE_URLS))
       .then(() => self.skipWaiting())
-  );
+      .then(() => self.clients.matchAll().then((clients) => {
+                    clients.forEach((client) => client.navigate(client.url));
+        })))
 });
 
 // ── Activate: limpiar cachés obsoletos ────────────────────
@@ -90,37 +92,41 @@ self.addEventListener('fetch', (event) => {
 
   // 2. Navegaciones HTML → cache-first; fallback a index.html cuando offline
   if (request.mode === 'navigate') {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request)
-          .then((response) => {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-            return response;
-          })
-          .catch(() => caches.match('./index.html'));
-      })
-    );
-    return;
-  }
+        event.respondWith(
+            fetch(request)
+            .then((response) => {
+                const clone = response.clone();
+                caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+                return response;
+            })
+            .catch(() => caches.match('./index.html'))
+        );
+        return;
+    }
 
   // 3. Activos locales (mismo origen) → cache-first
   if (url.origin === self.location.origin) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
+        event.respondWith(
+            caches.match(request).then((cached) => {
+            const fetchPromise = fetch(request).then((response) => {
+                if (response && response.ok) {
+                const clone = response.clone();
+                caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+                }
+                return response;
+            });
+
+            return cached || fetchPromise;
+            })
+        );
+        return;
+    }
+
+    if (navigator.serviceWorker) {
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+            window.location.reload();
         });
-      })
-    );
-    return;
-  }
+    }
 
   // 4. Recursos externos (Google Fonts, Font Awesome, jsPDF CDN)
   //    → network-first, fallback a caché si hay error de red
