@@ -1281,7 +1281,7 @@ async function buildPDFDoc() {
   const activeExtras = ACCESSORIES.filter(acc => (accQty[acc.id]||0) > 0);
 
   sectionHeader(doc, '  DETALLE EQUIPOS Y SERVICIOS', margin, y, pageW - margin*2);
-  y += 8;
+  y += 4;
 
   const tableBody = [];
 
@@ -1835,6 +1835,8 @@ window.CotizPersistenceBridge = {
   getQuoteNumberValue,
   setQuoteNumberValue,
   refreshQuoteNumberAfterLogin,
+  generateQuoteNumber,
+  resetAll,
   getActiveQuoteStatus: () => activeQuoteStatus,
   setActiveQuoteStatus: (s) => { activeQuoteStatus = s || 'draft'; }
 };

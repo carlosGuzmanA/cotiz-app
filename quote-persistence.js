@@ -160,6 +160,8 @@
         const choice = await showSavePrompt();
         if (choice === 'login') { openLoginModal(); return; }
         await original();
+        const bridge = getBridge();
+        if (bridge && typeof bridge.resetAll === 'function') bridge.resetAll();
         return;
       }
       let saved = null;
@@ -172,6 +174,8 @@
       if (saved) {
         showToastSafe('PDF generado y cotización guardada', 'success');
       }
+      const bridge = getBridge();
+      if (bridge && typeof bridge.resetAll === 'function') bridge.resetAll();
     };
 
     window.generatePDF.__patchedWithPersistence = true;
@@ -188,6 +192,8 @@
         const choice = await showSavePrompt();
         if (choice === 'login') { openLoginModal(); return; }
         await original();
+        const bridge = getBridge();
+        if (bridge && typeof bridge.resetAll === 'function') bridge.resetAll();
         return;
       }
       try {
@@ -196,6 +202,8 @@
         // persistencia silenciosa; no bloquear flujo de compartir
       }
       await original();
+      const bridge = getBridge();
+      if (bridge && typeof bridge.resetAll === 'function') bridge.resetAll();
     };
 
     window.sharePDF.__patchedWithPersistence = true;
@@ -316,6 +324,11 @@
         if (isAuthenticated()) {
           window.FirebaseAuthService.signOut();
           updateAuthMenuState();
+          // Regenerar número provisional al cerrar sesión
+          const bridge = getBridge();
+          if (bridge && typeof bridge.generateQuoteNumber === 'function') {
+            bridge.generateQuoteNumber().catch(function() {});
+          }
           showToastSafe('Sesión cerrada.', 'success');
           return;
         }
