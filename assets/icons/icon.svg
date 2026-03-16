@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Fondo con esquinas redondeadas -->
+  <rect width="512" height="512" rx="96" fill="#1a3a5c"/>
+  <!-- Copo de nieve / clima -->
+  <!-- Eje vertical -->
+  <line x1="256" y1="88" x2="256" y2="424" stroke="white" stroke-width="32" stroke-linecap="round"/>
+  <!-- Eje horizontal -->
+  <line x1="88" y1="256" x2="424" y2="256" stroke="white" stroke-width="32" stroke-linecap="round"/>
+  <!-- Diagonales -->
+  <line x1="137" y1="137" x2="375" y2="375" stroke="white" stroke-width="32" stroke-linecap="round"/>
+  <line x1="375" y1="137" x2="137" y2="375" stroke="white" stroke-width="32" stroke-linecap="round"/>
+  <!-- Ramas eje vertical superior -->
+  <line x1="256" y1="152" x2="218" y2="114" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <line x1="256" y1="152" x2="294" y2="114" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <!-- Ramas eje vertical inferior -->
+  <line x1="256" y1="360" x2="218" y2="398" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <line x1="256" y1="360" x2="294" y2="398" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <!-- Ramas eje horizontal izquierdo -->
+  <line x1="152" y1="256" x2="114" y2="218" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <line x1="152" y1="256" x2="114" y2="294" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <!-- Ramas eje horizontal derecho -->
+  <line x1="360" y1="256" x2="398" y2="218" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <line x1="360" y1="256" x2="398" y2="294" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <!-- Círculo central -->
+  <circle cx="256" cy="256" r="34" fill="#1a3a5c" stroke="white" stroke-width="20"/>
+</svg>

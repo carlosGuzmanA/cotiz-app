@@ -1,0 +1,40 @@
+{
+  "name": "CotizaClima",
+  "short_name": "CotizaClima",
+  "description": "Sistema de cotización para aire acondicionado y climatización",
+  "lang": "es",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#1a3a5c",
+  "background_color": "#f5f3f0",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Nueva cotización",
+      "url": "./index.html",
+      "description": "Crear una nueva cotización"
+    },
+    {
+      "name": "Historial",
+      "url": "./quotes.html",
+      "description": "Ver cotizaciones guardadas"
+    }
+  ]
+}
