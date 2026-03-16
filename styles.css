@@ -83,6 +83,16 @@
     color: #ffffff;
   }
   .logo-text span { color: var(--gold); }
+  .app-version {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    color: rgba(255,255,255,0.45);
+    vertical-align: super;
+    margin-left: 4px;
+    line-height: 1;
+  }
   .btn-header-link {
     background: rgba(255,255,255,0.12);
     border: 1px solid rgba(255,255,255,0.35);
