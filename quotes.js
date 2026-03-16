@@ -141,6 +141,16 @@
       ? `<button class="quotes-btn icon-btn" disabled title="Cotización bloqueada: edita los datos del cliente en la sección Clientes"><i class="fas fa-pen-to-square"></i></button>`
       : `<button class="quotes-btn icon-btn" data-action="open" data-id="${item.id}" title="Abrir y editar"><i class="fas fa-pen-to-square"></i></button>`;
 
+    // Botón compartir: visible para cotizaciones emitidas en adelante
+    const canShare = status !== 'draft';
+    const hasResponse = item.acceptanceResponse && item.acceptanceResponse.type;
+    const responseBadge = hasResponse
+      ? `<span class="acceptance-badge acceptance-badge--${item.acceptanceResponse.type}"><i class="fas ${item.acceptanceResponse.type === 'accepted' ? 'fa-circle-check' : 'fa-circle-xmark'}"></i> Cliente ${item.acceptanceResponse.type === 'accepted' ? 'aceptó' : 'rechazó'}</span>`
+      : '';
+    const shareBtn = canShare
+      ? `<button class="quotes-btn secondary icon-btn ${item.acceptanceLink ? 'share-link-ready' : ''}" data-action="share" data-id="${item.id}" title="Compartir enlace de aceptación"><i class="fas fa-share-nodes"></i></button>`
+      : '';
+
     return `<div class="quote-item status-border-${status}" data-id="${item.id}">
       <div class="quote-head">
         <div class="quote-head-left">
@@ -153,6 +163,7 @@
         </div>
       </div>
       <div class="quote-client"><i class="fas fa-user" style="opacity:.5;margin-right:4px"></i>${clientName}</div>
+      ${responseBadge ? `<div class="quote-response-row">${responseBadge}</div>` : ''}
       ${scheduledDateLine(item)}
       ${advanceBtn ? `<div class="quote-advance-row">${advanceBtn}</div>` : ''}
       <div class="quote-actions-row">
@@ -160,7 +171,7 @@
           ${editBtn}
           <button class="quotes-btn secondary icon-btn" data-action="detail" data-id="${item.id}" title="Ver detalle"><i class="fas fa-eye"></i></button>
           <button class="quotes-btn secondary icon-btn" data-action="duplicate" data-id="${item.id}" title="Duplicar"><i class="fas fa-copy"></i></button>
-          ${callBtn}${wazeBtn}
+          ${callBtn}${wazeBtn}${shareBtn}
         </div>
         <button class="quotes-btn danger icon-btn" data-action="delete" data-id="${item.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
       </div>
@@ -170,6 +181,176 @@
   function navigateToEditorWithQuote(quote) {
     sessionStorage.setItem(PENDING_QUOTE_STORAGE_KEY, JSON.stringify({ quote }));
     window.location.href = 'index.html';
+  }
+
+  // ── Modal de compartir enlace de aceptación ───────────────
+
+  const ACCEPTANCE_BASE_URL = 'https://cotiz-app.vercel.app/aceptar';
+
+  let _shareCurrentItem = null;
+
+  function buildAcceptanceLink(quoteId) {
+    return `${ACCEPTANCE_BASE_URL}?id=${encodeURIComponent(quoteId)}`;
+  }
+
+  function buildShareMessage(item, link) {
+    const clientName = (item.client && item.client.name) ? item.client.name.split(' ')[0] : 'Cliente';
+    const quoteNum   = item.quoteNumber || item.id;
+    const total      = item.pricing && item.pricing.total ? `$${fmtNum(item.pricing.total)}` : '';
+    const totalLine  = total ? `\nTotal: ${total}` : '';
+    return `Hola ${clientName},\n\nTe envío la cotización ${quoteNum}.${totalLine}\n\nPuedes revisarla y aceptarla aquí:\n${link}`;
+  }
+
+  async function generateAndSaveLink(item) {
+    // Si ya tiene enlace guardado lo reutilizamos
+    if (item.acceptanceLink) return item.acceptanceLink;
+
+    const { user, idToken } = await requireAuthContext();
+
+    // Construir snapshot público (sin datos internos del vendedor)
+    const publicSnapshot = {
+      quoteNumber:         item.quoteNumber || null,
+      quoteDate:           item.quoteDate   || null,
+      client: {
+        name:    item.client && item.client.name    || null,
+        address: item.client && item.client.address || null,
+        city:    item.client && item.client.city    || null,
+        region:  item.client && item.client.region  || null
+      },
+      equipmentSelections: item.equipmentSelections || [],
+      serviceSelection:    item.serviceSelection    || {},
+      pricing:             item.pricing             || {},
+      notes:               item.notes               || {}
+    };
+
+    await window.QuotesRepo.savePublicQuote(item.id, publicSnapshot, idToken);
+
+    const link = buildAcceptanceLink(item.id);
+
+    // Guardar el link en la cotización para re-compartir fácilmente
+    await window.QuotesRepo.updateQuoteStatus(user.uid, idToken, item.id, item.status || 'issued', {
+      acceptanceLink: link
+    });
+
+    return link;
+  }
+
+  async function openShareModal(item) {
+    _shareCurrentItem = item;
+    const modal = $('shareModal');
+    if (!modal) return;
+
+    // Reset response section
+    const responseSection = $('shareResponseSection');
+    if (responseSection) responseSection.style.display = 'none';
+
+    // Mostrar estado de carga en mensaje
+    const msgEl = $('shareMessagePreview');
+    if (msgEl) msgEl.textContent = 'Generando enlace…';
+
+    const linkEl = $('shareLinkValue');
+    if (linkEl) linkEl.textContent = '…';
+
+    modal.classList.add('open');
+
+    try {
+      const link = await generateAndSaveLink(item);
+      // Actualizar el item en memoria con el link recién guardado
+      item.acceptanceLink = link;
+
+      const msg = buildShareMessage(item, link);
+      if (msgEl) msgEl.textContent = msg;
+      if (linkEl) linkEl.textContent = link;
+
+      // WhatsApp
+      const waBtn = $('btnShareWhatsapp');
+      if (waBtn) {
+        const phone = item.client && item.client.phone
+          ? item.client.phone.replace(/[^+\d]/g, '')
+          : '';
+        const waUrl = phone
+          ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
+          : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        waBtn.href = waUrl;
+      }
+
+      // Email
+      const emailBtn = $('btnShareEmail');
+      if (emailBtn) {
+        const email   = item.client && item.client.email ? item.client.email : '';
+        const subject = encodeURIComponent(`Cotización ${item.quoteNumber || item.id}`);
+        const body    = encodeURIComponent(msg);
+        emailBtn.href = `mailto:${email}?subject=${subject}&body=${body}`;
+      }
+
+      // Si ya tiene respuesta, mostrarla
+      if (item.acceptanceResponse && item.acceptanceResponse.type) {
+        renderResponseBadge(item.acceptanceResponse);
+      }
+
+    } catch (e) {
+      if (msgEl) msgEl.textContent = 'No se pudo generar el enlace.';
+      showStatus(e.message || 'Error al generar enlace.', true);
+    }
+  }
+
+  function renderResponseBadge(response) {
+    const section = $('shareResponseSection');
+    const content = $('shareResponseContent');
+    if (!section || !content) return;
+
+    const isAccepted = response.type === 'accepted';
+    const icon  = isAccepted ? 'fa-circle-check' : 'fa-circle-xmark';
+    const label = isAccepted ? 'El cliente aceptó la cotización' : 'El cliente rechazó la cotización';
+    const cls   = isAccepted ? 'response-accepted' : 'response-rejected';
+    const date  = response.respondedAt
+      ? new Date(response.respondedAt).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' })
+      : '';
+
+    content.innerHTML = `<div class="share-response-badge ${cls}"><i class="fas ${icon}"></i> ${label}${date ? ` — ${date}` : ''}</div>`;
+    section.style.display = '';
+  }
+
+  async function checkClientResponse() {
+    if (!_shareCurrentItem) return;
+    const { user, idToken } = await requireAuthContext();
+    const id = _shareCurrentItem.id;
+
+    try {
+      const response = await window.QuotesRepo.getQuoteResponse(id, idToken);
+      if (!response || !response.type) {
+        const content = $('shareResponseContent');
+        const section = $('shareResponseSection');
+        if (content) content.innerHTML = '<div class="share-response-pending"><i class="fas fa-clock"></i> Sin respuesta aún</div>';
+        if (section) section.style.display = '';
+        return;
+      }
+      renderResponseBadge(response);
+
+      // Si aceptó y el estado actual es 'issued', avanzar automáticamente
+      if (response.type === 'accepted' && (_shareCurrentItem.status || 'issued') === 'issued') {
+        await window.QuotesRepo.updateQuoteStatus(user.uid, idToken, id, 'accepted', {
+          acceptanceResponse: response,
+          acceptedAt: response.respondedAt || Date.now()
+        });
+        showStatus('¡El cliente aceptó! Estado actualizado a Aceptada.', false);
+        await loadQuotes();
+      } else if (response.type === 'rejected') {
+        // Guardar la respuesta en la cotización para mostrar el badge
+        await window.QuotesRepo.updateQuoteStatus(user.uid, idToken, id, _shareCurrentItem.status || 'issued', {
+          acceptanceResponse: response
+        });
+        await loadQuotes();
+      }
+    } catch (e) {
+      showStatus(e.message || 'No se pudo verificar respuesta.', true);
+    }
+  }
+
+  function closeShareModal() {
+    const modal = $('shareModal');
+    if (modal) modal.classList.remove('open');
+    _shareCurrentItem = null;
   }
 
   // ── Modal de detalle ──────────────────────────────────────
@@ -326,6 +507,10 @@
     if (!ok) return;
     const { user, idToken } = await requireAuthContext();
     await window.QuotesRepo.deleteQuote(user.uid, idToken, id);
+    // Limpiar snapshot público y respuesta del cliente (silencioso)
+    if (window.QuotesRepo.deletePublicQuoteData) {
+      window.QuotesRepo.deletePublicQuoteData(id, idToken).catch(() => {});
+    }
     showStatus('Cotización eliminada.', false);
     await loadQuotes();
   }
@@ -435,6 +620,12 @@
       }
       if (action === 'duplicate') await duplicateQuote(id);
       if (action === 'delete')    await deleteQuote(id);
+      if (action === 'share') {
+        const { user, idToken } = await requireAuthContext();
+        const quote = await window.QuotesRepo.getQuote(user.uid, idToken, id);
+        if (quote) await openShareModal(quote);
+        return;
+      }
       if (action === 'advance') {
         const next = btn.dataset.next;
         const needsDate = btn.dataset.needsDate === '1';
@@ -471,6 +662,26 @@
     $('btnScheduleConfirm').addEventListener('click', confirmSchedule);
     $('btnScheduleCancel').addEventListener('click', closeScheduleModal);
     $('scheduleModal').addEventListener('click', e => { if (e.target === $('scheduleModal')) closeScheduleModal(); });
+
+    // Eventos del modal de compartir
+    $('btnShareClose').addEventListener('click', closeShareModal);
+    $('shareModal').addEventListener('click', e => { if (e.target === $('shareModal')) closeShareModal(); });
+    $('btnCheckResponse').addEventListener('click', async () => {
+      try { await checkClientResponse(); } catch (e) { showStatus(e.message || 'Error.', true); }
+    });
+    $('btnCopyLink').addEventListener('click', () => {
+      const val = $('shareLinkValue') && $('shareLinkValue').textContent;
+      if (val && val !== '—' && val !== '…') {
+        navigator.clipboard.writeText(val).then(() => showStatus('Enlace copiado.', false)).catch(() => {});
+      }
+    });
+    $('btnCopyMessage').addEventListener('click', () => {
+      const val = $('shareMessagePreview') && $('shareMessagePreview').textContent;
+      if (val) {
+        navigator.clipboard.writeText(val).then(() => showStatus('Mensaje copiado.', false)).catch(() => {});
+      }
+    });
+
     await bootstrap();
   });
 })();

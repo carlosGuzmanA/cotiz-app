@@ -82,6 +82,43 @@
     return true;
   }
 
+  // ── Cotización pública (para enlace de aceptación del cliente) ──
+
+  /**
+   * Guarda un snapshot público de la cotización en public_quotes/{quoteId}.
+   * Requiere auth del vendedor. El cliente puede leerlo sin auth.
+   */
+  async function savePublicQuote(quoteId, publicData, idToken) {
+    const payload = { ...publicData, updatedAt: Date.now() };
+    await request(`public_quotes/${quoteId}`, idToken, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return true;
+  }
+
+  /**
+   * Lee la respuesta del cliente desde quote_responses/{quoteId}.
+   * Requiere auth del vendedor.
+   */
+  async function getQuoteResponse(quoteId, idToken) {
+    const data = await request(`quote_responses/${quoteId}`, idToken, { method: 'GET' });
+    return data;
+  }
+
+  /**
+   * Elimina el snapshot público y la respuesta del cliente al borrar una cotización.
+   * Falla silenciosamente si no existen.
+   */
+  async function deletePublicQuoteData(quoteId, idToken) {
+    const cleanPath = async p => {
+      try { await request(p, idToken, { method: 'DELETE' }); } catch (e) { /* ignorar */ }
+    };
+    await cleanPath(`public_quotes/${quoteId}`);
+    await cleanPath(`quote_responses/${quoteId}`);
+  }
+
   async function updateQuoteStatus(uid, idToken, quoteId, status, extraFields) {
     const patch = {
       status,
@@ -105,6 +142,9 @@
     getQuote,
     saveQuote,
     deleteQuote,
-    updateQuoteStatus
+    updateQuoteStatus,
+    savePublicQuote,
+    getQuoteResponse,
+    deletePublicQuoteData
   };
 })();

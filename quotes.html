@@ -114,6 +114,54 @@
     </div>
   </div></div>
 
+  <!-- MODAL: COMPARTIR ENLACE DE ACEPTACIÓN -->
+  <div class="share-overlay" id="shareModal">
+    <div class="share-sheet">
+      <div class="share-handle"></div>
+      <div class="share-title"><i class="fas fa-share-nodes"></i> Compartir cotización</div>
+      <p class="share-hint">Envía este enlace al cliente para que pueda revisar y aceptar la cotización digitalmente.</p>
+
+      <div class="share-section">
+        <div class="share-section-label">Mensaje sugerido</div>
+        <div class="share-message-box">
+          <pre id="shareMessagePreview" class="share-message-text"></pre>
+        </div>
+        <div class="share-copy-row">
+          <button class="quotes-btn secondary" id="btnCopyMessage"><i class="fas fa-copy"></i> Copiar mensaje</button>
+        </div>
+      </div>
+
+      <div class="share-section">
+        <div class="share-section-label">Enlace de aceptación</div>
+        <div class="share-link-box">
+          <span id="shareLinkValue" class="share-link-text">—</span>
+        </div>
+        <div class="share-copy-row">
+          <button class="quotes-btn secondary" id="btnCopyLink"><i class="fas fa-copy"></i> Copiar enlace</button>
+        </div>
+      </div>
+
+      <div class="share-channels">
+        <a class="share-channel-btn share-channel-whatsapp" id="btnShareWhatsapp" href="#" target="_blank" rel="noopener noreferrer">
+          <i class="fab fa-whatsapp"></i> WhatsApp
+        </a>
+        <a class="share-channel-btn share-channel-email" id="btnShareEmail" href="#" target="_blank" rel="noopener noreferrer">
+          <i class="fas fa-envelope"></i> Email
+        </a>
+      </div>
+
+      <div id="shareResponseSection" class="share-response-section" style="display:none">
+        <div class="share-section-label">Respuesta del cliente</div>
+        <div id="shareResponseContent" class="share-response-content"></div>
+      </div>
+
+      <div class="share-modal-footer">
+        <button class="quotes-btn secondary" id="btnCheckResponse"><i class="fas fa-rotate"></i> Verificar respuesta</button>
+        <button class="quotes-btn secondary" id="btnShareClose">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: PROGRAMAR FECHA -->
   <div class="schedule-overlay" id="scheduleModal">
     <div class="schedule-sheet">

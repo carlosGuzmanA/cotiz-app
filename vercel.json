@@ -1,4 +1,5 @@
 {
+  "cleanUrls": true,
   "headers": [
     {
       "source": "/sw.js",
@@ -22,6 +23,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/cotizacion/aceptar", "destination": "/aceptar" },
     { "source": "/", "destination": "/index.html" }
   ]
 }

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirmar Cotización — CotizaClima</title>
+  <meta name="theme-color" content="#1a3a5c">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Lato:wght@300;400;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="aceptar.css">
+</head>
+<body>
+  <div class="accept-shell">
+
+    <!-- Estado: Cargando -->
+    <div id="stateLoading" class="state-block">
+      <div class="spinner"></div>
+      <p>Cargando cotización…</p>
+    </div>
+
+    <!-- Estado: Error -->
+    <div id="stateError" class="state-block hidden">
+      <div class="state-icon error-icon"><i class="fas fa-circle-exclamation"></i></div>
+      <h2>No encontrada</h2>
+      <p id="errorMessage">No se pudo cargar la cotización solicitada.</p>
+    </div>
+
+    <!-- Estado: Ya respondida -->
+    <div id="stateAlreadyResponded" class="state-block hidden">
+      <div class="state-icon" id="alreadyIcon"><i class="fas fa-circle-check"></i></div>
+      <h2>Cotización ya <span id="alreadyType">respondida</span></h2>
+      <p>Ya registramos tu respuesta anteriormente. Nos pondremos en contacto contigo.</p>
+    </div>
+
+    <!-- Estado principal: Vista de cotización -->
+    <div id="stateQuote" class="quote-view hidden">
+      <div class="accept-header">
+        <div class="brand-icon"><i class="fas fa-snowflake"></i></div>
+        <div class="accept-header-text">
+          <div class="accept-brand">CotizaClima</div>
+          <div class="accept-quote-num" id="quoteNumber">—</div>
+        </div>
+      </div>
+
+      <div class="greeting-box">
+        <p>Hola <strong id="clientNameGreet">—</strong>,</p>
+        <p>A continuación encontrarás el detalle de tu cotización. Si estás de acuerdo con los términos, puedes aceptarla al final de esta página.</p>
+      </div>
+
+      <!-- Datos del cliente -->
+      <div class="accept-card">
+        <div class="accept-card-title"><i class="fas fa-user"></i> Cliente</div>
+        <div class="accept-kv"><b>Nombre</b><span id="clientDisplayName">—</span></div>
+        <div class="accept-kv" id="addressRow"><b>Dirección</b><span id="clientDisplayAddress">—</span></div>
+      </div>
+
+      <!-- Equipos -->
+      <div class="accept-card" id="equipCard">
+        <div class="accept-card-title"><i class="fas fa-snowflake"></i> Equipos</div>
+        <div id="equipRows"></div>
+      </div>
+
+      <!-- Servicio -->
+      <div class="accept-card" id="svcCard">
+        <div class="accept-card-title"><i class="fas fa-screwdriver-wrench"></i> Servicio</div>
+        <div id="svcRows"></div>
+      </div>
+
+      <!-- Accesorios -->
+      <div class="accept-card" id="accCard">
+        <div class="accept-card-title"><i class="fas fa-toolbox"></i> Accesorios</div>
+        <div id="accRows"></div>
+      </div>
+
+      <!-- Observaciones -->
+      <div class="accept-card" id="notesCard" style="display:none">
+        <div class="accept-card-title"><i class="fas fa-circle-info"></i> Observaciones</div>
+        <p id="notesText" class="notes-text"></p>
+      </div>
+
+      <!-- Total -->
+      <div class="accept-total-banner">
+        <div class="total-label">Total cotización</div>
+        <div class="total-amount" id="totalAmount">$0</div>
+        <div class="total-note">Precio en pesos chilenos (CLP)</div>
+      </div>
+
+      <!-- Acciones -->
+      <p class="accept-footer-hint">
+        Al confirmar, aceptas los términos y valores indicados en esta cotización.
+      </p>
+      <div class="accept-actions">
+        <button class="accept-btn accept-btn--accept" id="btnAccept">
+          <i class="fas fa-circle-check"></i> Aceptar cotización
+        </button>
+        <button class="accept-btn accept-btn--reject" id="btnReject">
+          <i class="fas fa-circle-xmark"></i> No acepto
+        </button>
+      </div>
+    </div>
+
+    <!-- Estado: Confirmado (aceptado) -->
+    <div id="stateConfirmed" class="state-block hidden">
+      <div class="state-icon accepted-icon"><i class="fas fa-circle-check"></i></div>
+      <h2>¡Cotización aceptada!</h2>
+      <p>Hemos registrado tu aceptación de la cotización <strong id="confirmedQuoteNum">—</strong>.</p>
+      <p>Nos pondremos en contacto contigo para coordinar los próximos pasos.</p>
+    </div>
+
+    <!-- Estado: Rechazado -->
+    <div id="stateRejected" class="state-block hidden">
+      <div class="state-icon rejected-icon"><i class="fas fa-circle-xmark"></i></div>
+      <h2>Cotización no aceptada</h2>
+      <p>Hemos registrado tu respuesta. Si tienes consultas o deseas hacer ajustes, comunícate con nosotros.</p>
+    </div>
+
+  </div>
+
+  <script src="aceptar.js"></script>
+</body>
+</html>
