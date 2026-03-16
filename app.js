@@ -1446,7 +1446,7 @@ function validateQuoteForGeneration() {
   const serviceItems = getSelectedServiceItems();
 
   if (!clientName) {
-    showToast('Ingresa el nombre del cliente antes de generar la cotización.', 'error');
+    showToast('Ingresa el nombre del cliente.', 'error');
     goToStep(4);
     setTimeout(() => {
       const el = document.getElementById('clientName');
@@ -1456,7 +1456,7 @@ function validateQuoteForGeneration() {
   }
 
   if (!serviceItems.length) {
-    showToast('Selecciona al menos un servicio antes de generar la cotización.', 'error');
+    showToast('Selecciona al menos un servicio.', 'error');
     goToStep(2);
     return false;
   }
