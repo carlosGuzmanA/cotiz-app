@@ -319,19 +319,24 @@
 
     try {
       const response = await window.QuotesRepo.getQuoteResponse(id, idToken);
-      if (!response || !response.type) {
+      const localResponse = _shareCurrentItem && _shareCurrentItem.acceptanceResponse && _shareCurrentItem.acceptanceResponse.type
+        ? _shareCurrentItem.acceptanceResponse
+        : null;
+      const effectiveResponse = (response && response.type) ? response : localResponse;
+
+      if (!effectiveResponse || !effectiveResponse.type) {
         const content = $('shareResponseContent');
         const section = $('shareResponseSection');
         if (content) content.innerHTML = '<div class="share-response-pending"><i class="fas fa-clock"></i> Sin respuesta aún</div>';
         if (section) section.style.display = '';
         return;
       }
-      renderResponseBadge(response);
+      renderResponseBadge(effectiveResponse);
 
-      const synced = await syncQuoteResponseForItem(user.uid, idToken, _shareCurrentItem, response);
+      const synced = await syncQuoteResponseForItem(user.uid, idToken, _shareCurrentItem, effectiveResponse);
       _shareCurrentItem = synced;
 
-      if (response.type === 'accepted' && (synced.status || 'issued') === 'accepted') {
+      if (effectiveResponse.type === 'accepted' && (synced.status || 'issued') === 'accepted') {
         showStatus('¡El cliente aceptó! Estado actualizado a Aceptada.', false);
       }
 
@@ -345,7 +350,11 @@
     const status = item.status || 'draft';
     if (status === 'draft') return item;
 
-    let response = responseOverride;
+    const localResponse = item.acceptanceResponse && item.acceptanceResponse.type
+      ? item.acceptanceResponse
+      : null;
+
+    let response = responseOverride || localResponse;
     if (!response) {
       try {
         response = await window.QuotesRepo.getQuoteResponse(item.id, idToken);
@@ -364,10 +373,19 @@
     let nextStatus = status;
     const extraFields = { acceptanceResponse: response };
 
+    // Mantener consistencia entre estado del ciclo y respuesta del cliente.
+    // Si primero aceptó y luego rechazó desde el link, volvemos a "issued",
+    // excepto cuando el técnico marcó aceptación manual.
+    if (response.type === 'rejected' && status === 'accepted' && !item.acceptedByTech) {
+      nextStatus = 'issued';
+      extraFields.acceptedAt = null;
+    }
+
     // Solo avanzamos automáticamente a "accepted" si estaba "issued".
     if (response.type === 'accepted' && status === 'issued') {
       nextStatus = 'accepted';
       extraFields.acceptedAt = response.respondedAt || Date.now();
+      extraFields.acceptedByTech = false;
     }
 
     const needsPersist = !sameResponse || nextStatus !== status;
@@ -632,6 +650,10 @@
 
       if (nextStatus === 'scheduled') {
         extra.scheduledDate = scheduledTs || null;
+      } else if (nextStatus === 'accepted') {
+        // Permite confirmar manualmente aunque el cliente haya rechazado.
+        extra.acceptedAt = Date.now();
+        extra.acceptedByTech = true;
       } else if (nextStatus === 'completed') {
         extra.completedAt = Date.now();
         // Auto-calcular límite de garantía: 6 meses
