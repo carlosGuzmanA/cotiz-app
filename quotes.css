@@ -126,6 +126,10 @@ body.quotes-page {
 }
 
 .quotes-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   border: 1px solid #1a3a5c;
   background: #1a3a5c;
   color: #fff;
@@ -134,7 +138,12 @@ body.quotes-page {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.4px;
+  line-height: 1;
   cursor: pointer;
+  text-decoration: none;
+  vertical-align: middle;
+  font-family: 'Lato', sans-serif;
+  white-space: nowrap;
 }
 
 .quotes-btn.secondary {
