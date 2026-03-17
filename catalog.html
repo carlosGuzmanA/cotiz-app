@@ -307,10 +307,6 @@
 
     <div class="form-grid" style="margin-top:12px;">
       <div class="form-group-cat">
-        <label>ID (identificador único)</label>
-        <input type="text" id="svcId" placeholder="Ej: cambio_local">
-      </div>
-      <div class="form-group-cat">
         <label>Precio base $</label>
         <input type="number" id="svcPrecio" placeholder="0" min="0" step="1000">
       </div>
@@ -352,10 +348,6 @@
     <div class="schedule-title" id="extraModalTitle">Nuevo extra</div>
 
     <div class="form-grid" style="margin-top:12px;">
-      <div class="form-group-cat">
-        <label>ID (identificador único)</label>
-        <input type="text" id="extId" placeholder="Ej: kit_can_9k">
-      </div>
       <div class="form-group-cat">
         <label>Precio $</label>
         <input type="number" id="extPrecio" placeholder="0" min="0" step="100">
@@ -500,7 +492,7 @@
           '<div class="cat-body">' +
             '<div class="cat-title">' + escHtml(svc.name || '—') + (isBuiltin ? '<span class="warn-badge">integrado</span>' : '') + '</div>' +
             '<div class="cat-sub">' + escHtml(svc.desc || '') + '</div>' +
-            '<div class="cat-tags"><span class="cat-id-code">' + escHtml(svc.id || '') + '</span>' +
+            '<div class="cat-tags">' +
               (canEditPrice ? '<span class="catalog-badge">precio editable UI</span>' : '') +
             '</div>' +
           '</div>' +
@@ -647,8 +639,6 @@
     editingServicioIdx = (idx !== undefined && idx !== null) ? idx : null;
     $('servicioModalTitle').textContent = editingServicioIdx !== null ? 'Editar servicio' : 'Nuevo servicio';
     var svc = editingServicioIdx !== null ? allServices[editingServicioIdx] : {};
-    $('svcId').value     = svc.id || '';
-    $('svcId').disabled  = editingServicioIdx !== null; // no cambiar ID en edición
     $('svcNombre').value = svc.name || '';
     $('svcDesc').value   = svc.desc || '';
     $('svcPrecio').value = svc.price !== undefined ? svc.price : '';
@@ -673,20 +663,22 @@
   };
 
   async function saveServicio() {
-    var id     = $('svcId').value.trim();
     var nombre = $('svcNombre').value.trim();
-    if (!id)     { alert('El ID es obligatorio.'); return; }
     if (!nombre) { alert('El nombre es obligatorio.'); return; }
 
-    // Verificar ID duplicado en nueva creación
-    if (editingServicioIdx === null) {
-      var exists = allServices.some(function(s) { return s.id === id; });
-      if (exists) { alert('Ya existe un servicio con ese ID.'); return; }
+    var iconVal = ($('svcIcono').value || '').trim().replace(/^fa-/, '');
+    var idToken = await window.FirebaseAuthService.getValidIdToken();
+    var serviceId = editingServicioIdx !== null
+      ? (allServices[editingServicioIdx] && allServices[editingServicioIdx].id)
+      : await window.CatalogRepo.generateFirebaseKey('services', idToken);
+
+    if (!serviceId) {
+      alert('No se pudo generar ID único para el servicio.');
+      return;
     }
 
-    var iconVal = ($('svcIcono').value || '').trim().replace(/^fa-/, '');
     var svc = {
-      id:    id,
+      id:    serviceId,
       name:  nombre,
       desc:  $('svcDesc').value.trim(),
       price: Number($('svcPrecio').value) || 0,
@@ -701,7 +693,6 @@
     }
 
     try {
-      var idToken = await window.FirebaseAuthService.getValidIdToken();
       await window.CatalogRepo.saveServices(idToken, allServices);
       closeServicioModal();
       renderServicios();
@@ -778,7 +769,7 @@
           '<div class="cat-body">' +
             '<div class="cat-title">' + escHtml(ext.name || '—') + '</div>' +
             '<div class="cat-sub">' + escHtml(ext.desc || '') + '</div>' +
-            (pill ? '<div class="cat-tags">' + pill + '<span class="cat-id-code">' + escHtml(ext.id || '') + '</span></div>' : '') +
+            (pill ? '<div class="cat-tags">' + pill + '</div>' : '') +
           '</div>' +
           '<div class="cat-right">' +
             '<div class="cat-price">$' + fmtNum(ext.price) + '</div>' +
@@ -797,8 +788,6 @@
     editingExtraIdx = (idx !== undefined && idx !== null) ? idx : null;
     $('extraModalTitle').textContent = editingExtraIdx !== null ? 'Editar extra' : 'Nuevo extra';
     var ext = editingExtraIdx !== null ? allExtras[editingExtraIdx] : {};
-    $('extId').value       = ext.id || '';
-    $('extId').disabled    = editingExtraIdx !== null;
     $('extNombre').value   = ext.name || '';
     $('extDesc').value     = ext.desc || '';
     $('extPrecio').value   = ext.price !== undefined ? ext.price : '';
@@ -813,16 +802,18 @@
   }
 
   async function saveExtra() {
-    var id     = $('extId').value.trim();
     var nombre = $('extNombre').value.trim();
-    if (!id)     { alert('El ID es obligatorio.'); return; }
     if (!nombre) { alert('El nombre es obligatorio.'); return; }
-    if (editingExtraIdx === null) {
-      var exists = allExtras.some(function(e) { return e.id === id; });
-      if (exists) { alert('Ya existe un extra con ese ID.'); return; }
+    var idToken = await window.FirebaseAuthService.getValidIdToken();
+    var extraId = editingExtraIdx !== null
+      ? (allExtras[editingExtraIdx] && allExtras[editingExtraIdx].id)
+      : await window.CatalogRepo.generateFirebaseKey('accessories', idToken);
+    if (!extraId) {
+      alert('No se pudo generar ID único para el extra.');
+      return;
     }
     var ext = {
-      id:        id,
+      id:        extraId,
       name:      nombre,
       desc:      $('extDesc').value.trim(),
       price:     Number($('extPrecio').value) || 0,
@@ -836,7 +827,6 @@
       allExtras.push(ext);
     }
     try {
-      var idToken = await window.FirebaseAuthService.getValidIdToken();
       await window.CatalogRepo.saveAccessories(idToken, allExtras);
       closeExtraModal();
       renderExtras();

@@ -111,6 +111,74 @@
     });
   }
 
+  // Algoritmo de push ID compatible con Firebase (cliente local)
+  const PUSH_CHARS = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+  let lastPushTime = 0;
+  let lastRandChars = [];
+
+  function generateClientPushId() {
+    let now = Date.now();
+    const duplicateTime = (now === lastPushTime);
+    lastPushTime = now;
+
+    const timeStampChars = new Array(8);
+    for (let i = 7; i >= 0; i--) {
+      timeStampChars[i] = PUSH_CHARS.charAt(now % 64);
+      now = Math.floor(now / 64);
+    }
+
+    let id = timeStampChars.join('');
+
+    if (!duplicateTime) {
+      for (let i = 0; i < 12; i++) {
+        lastRandChars[i] = Math.floor(Math.random() * 64);
+      }
+    } else {
+      let i;
+      for (i = 11; i >= 0 && lastRandChars[i] === 63; i--) {
+        lastRandChars[i] = 0;
+      }
+      lastRandChars[i]++;
+    }
+
+    for (let i = 0; i < 12; i++) {
+      id += PUSH_CHARS.charAt(lastRandChars[i]);
+    }
+
+    return id;
+  }
+
+  // Genera una clave única con el algoritmo de Firebase (push id)
+  // y limpia inmediatamente el nodo temporal usado para obtenerla.
+  async function generateFirebaseKey(namespace, idToken) {
+    const safeNamespace = (namespace || 'general').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const tempPath = `__id_pool/${safeNamespace}`;
+    try {
+      const created = await request(tempPath, idToken, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ createdAt: Date.now() })
+      });
+
+      const key = created && created.name ? created.name : null;
+      if (!key) throw new Error('No se pudo generar un ID único en Firebase.');
+
+      try {
+        await request(`${tempPath}/${key}`, idToken, { method: 'DELETE' });
+      } catch (e) {
+        // Limpieza best-effort.
+      }
+
+      return key;
+    } catch (e) {
+      const msg = String((e && e.message) || '').toLowerCase();
+      if (msg.includes('permission denied') || msg.includes('permission_denied')) {
+        return generateClientPushId();
+      }
+      throw e;
+    }
+  }
+
   // ── Accesorios (extras) ───────────────────────────────────
 
   async function listAccessories(idToken) {
@@ -134,6 +202,7 @@
     saveServices,
     listAccessories,
     saveAccessories,
+    generateFirebaseKey,
     normalizeArray
   };
 })();
