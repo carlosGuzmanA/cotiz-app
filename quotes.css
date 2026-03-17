@@ -515,17 +515,32 @@ body.quotes-page {
 .quote-actions-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-top: 8px;
   gap: 6px;
+  flex-wrap: wrap;
 }
 .quote-actions-group {
   display: flex;
   gap: 4px;
   align-items: center;
-  flex-wrap: nowrap;
-  flex-shrink: 1;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
   min-width: 0;
+}
+
+/* En móvil el botón eliminar queda alineado arriba a la derecha
+   cuando el grupo de iconos ocupa toda la fila */
+@media (max-width: 420px) {
+  .quote-actions-row > .quotes-btn.danger {
+    flex-shrink: 0;
+    align-self: flex-start;
+  }
+  .icon-btn {
+    padding: 8px 10px;
+    min-width: 34px;
+    min-height: 34px;
+  }
 }
 
 .hidden {
@@ -756,7 +771,8 @@ body.quotes-page {
   justify-content: center;
   text-decoration: none;
   font-size: 13px;
-  min-width: 30px;
+  min-width: 34px;
+  min-height: 34px;
   flex-shrink: 0;
 }
 
