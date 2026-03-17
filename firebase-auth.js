@@ -7,7 +7,13 @@
 
   function readSession() {
     try {
-      const raw = sessionStorage.getItem(AUTH_STORAGE_KEY);
+      // Migrar sesión antigua de sessionStorage si existe
+      const legacy = sessionStorage.getItem(AUTH_STORAGE_KEY);
+      if (legacy) {
+        localStorage.setItem(AUTH_STORAGE_KEY, legacy);
+        sessionStorage.removeItem(AUTH_STORAGE_KEY);
+      }
+      const raw = localStorage.getItem(AUTH_STORAGE_KEY);
       return raw ? JSON.parse(raw) : null;
     } catch (e) {
       return null;
@@ -15,10 +21,11 @@
   }
 
   function writeSession(session) {
-    sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
   }
 
   function clearSession() {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
     sessionStorage.removeItem(AUTH_STORAGE_KEY);
   }
 
