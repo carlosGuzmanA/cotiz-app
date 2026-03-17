@@ -251,6 +251,7 @@
     const linkEl = $('shareLinkValue');
     if (linkEl) linkEl.textContent = '…';
 
+    modal.style.display = 'flex';
     modal.classList.add('open');
 
     try {
@@ -349,7 +350,10 @@
 
   function closeShareModal() {
     const modal = $('shareModal');
-    if (modal) modal.classList.remove('open');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.style.display = 'none';
+    }
     _shareCurrentItem = null;
   }
 

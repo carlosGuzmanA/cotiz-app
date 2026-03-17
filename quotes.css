@@ -877,7 +877,7 @@ body.quotes-page {
   justify-content: center;
   /* Sin overflow-y aquí: solo el sheet interior debe scrollear */
 }
-.share-overlay.open { display: flex; }
+.share-overlay.open { display: flex !important; }
 
 .share-sheet {
   background: #fff;
