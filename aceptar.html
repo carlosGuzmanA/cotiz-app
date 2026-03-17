@@ -26,6 +26,137 @@
       <p id="errorMessage">No se pudo cargar la cotización solicitada.</p>
     </div>
 
+    <!-- Estado principal: Vista de cotización (pendiente de respuesta) -->
+    <div id="stateQuote" class="quote-view hidden">
+      <div class="accept-header">
+        <div class="brand-icon"><i class="fas fa-snowflake"></i></div>
+        <div class="accept-header-text">
+          <div class="accept-brand">CotizaClima</div>
+          <div class="accept-quote-num" id="quoteNumber">—</div>
+        </div>
+      </div>
+
+      <div class="greeting-box">
+        <p>Hola <strong id="clientNameGreet">—</strong>,</p>
+        <p>A continuación encontrarás el detalle de tu cotización. Si estás de acuerdo con los términos, puedes aceptarla al final de esta página.</p>
+      </div>
+
+      <!-- Detalle de cotización (reutilizable) -->
+      <div id="quoteDetailBlock"></div>
+
+      <!-- Acciones -->
+      <p class="accept-footer-hint">
+        Al confirmar, aceptas los términos y valores indicados en esta cotización.
+      </p>
+      <div class="accept-actions">
+        <button class="accept-btn accept-btn--accept" id="btnAccept">
+          <i class="fas fa-circle-check"></i> Aceptar cotización
+        </button>
+        <button class="accept-btn accept-btn--reject" id="btnReject">
+          <i class="fas fa-circle-xmark"></i> No acepto
+        </button>
+      </div>
+    </div>
+
+    <!-- Estado: Ya respondida (muestra detalle + banner de respuesta) -->
+    <div id="stateAlreadyResponded" class="quote-view hidden">
+      <div class="accept-header">
+        <div class="brand-icon"><i class="fas fa-snowflake"></i></div>
+        <div class="accept-header-text">
+          <div class="accept-brand">CotizaClima</div>
+          <div class="accept-quote-num" id="alreadyQuoteNum">—</div>
+        </div>
+      </div>
+
+      <!-- Banner de respuesta registrada -->
+      <div id="alreadyResponseBanner" class="response-banner"></div>
+
+      <!-- Detalle de cotización (solo lectura) -->
+      <div id="alreadyDetailBlock"></div>
+
+      <div class="accept-footer-company">
+        <p>Ante cualquier consulta, comunícate con nosotros.</p>
+      </div>
+    </div>
+
+    <!-- Estado: Confirmado tras aceptar (detalle + celebración) -->
+    <div id="stateConfirmed" class="quote-view hidden">
+      <div class="accept-header">
+        <div class="brand-icon brand-icon--success"><i class="fas fa-circle-check"></i></div>
+        <div class="accept-header-text">
+          <div class="accept-brand">CotizaClima</div>
+          <div class="accept-quote-num" id="confirmedQuoteNum">—</div>
+        </div>
+      </div>
+
+      <div class="confirmed-banner confirmed-banner--accepted">
+        <div class="confirmed-banner-icon"><i class="fas fa-circle-check"></i></div>
+        <div>
+          <div class="confirmed-banner-title">¡Cotización aceptada!</div>
+          <div class="confirmed-banner-sub" id="confirmedDate">—</div>
+        </div>
+      </div>
+
+      <div class="greeting-box">
+        <p>Hola <strong id="confirmedClientName">—</strong>,</p>
+        <p>Hemos registrado tu confirmación. Nos pondremos en contacto contigo a la brevedad para coordinar los próximos pasos.</p>
+      </div>
+
+      <div id="confirmedDetailBlock"></div>
+
+      <div class="accept-footer-company">
+        <p>Gracias por elegir CotizaClima.</p>
+      </div>
+    </div>
+
+    <!-- Estado: Rechazado -->
+    <div id="stateRejected" class="quote-view hidden">
+      <div class="accept-header">
+        <div class="brand-icon brand-icon--rejected"><i class="fas fa-circle-xmark"></i></div>
+        <div class="accept-header-text">
+          <div class="accept-brand">CotizaClima</div>
+          <div class="accept-quote-num" id="rejectedQuoteNum">—</div>
+        </div>
+      </div>
+
+      <div class="confirmed-banner confirmed-banner--rejected">
+        <div class="confirmed-banner-icon"><i class="fas fa-circle-xmark"></i></div>
+        <div>
+          <div class="confirmed-banner-title">Cotización no aceptada</div>
+          <div class="confirmed-banner-sub" id="rejectedDate">—</div>
+        </div>
+      </div>
+
+      <div class="greeting-box">
+        <p>Hemos registrado tu respuesta. Si tienes consultas o deseas hacer ajustes a la propuesta, comunícate con nosotros.</p>
+      </div>
+
+      <div id="rejectedDetailBlock"></div>
+
+      <div class="accept-footer-company">
+        <p>Seguimos disponibles para ayudarte.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="aceptar.js"></script>
+</body>
+</html>
+
+    <!-- Estado: Cargando -->
+    <div id="stateLoading" class="state-block">
+      <div class="spinner"></div>
+      <p>Cargando cotización…</p>
+    </div>
+
+    <!-- Estado: Error -->
+    <div id="stateError" class="state-block hidden">
+      <div class="state-icon error-icon"><i class="fas fa-circle-exclamation"></i></div>
+      <h2>No encontrada</h2>
+      <p id="errorMessage">No se pudo cargar la cotización solicitada.</p>
+    </div>
+
     <!-- Estado: Ya respondida -->
     <div id="stateAlreadyResponded" class="state-block hidden">
       <div class="state-icon" id="alreadyIcon"><i class="fas fa-circle-check"></i></div>

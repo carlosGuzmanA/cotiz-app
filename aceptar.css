@@ -243,3 +243,76 @@ body {
   border: 1.5px solid #8b2e0f;
 }
 .accept-btn--reject:hover { background: #fdf0ec; }
+
+/* ─── Banner de respuesta (ya respondida / confirmación) ── */
+.response-banner {
+  margin-bottom: 14px;
+}
+
+.confirmed-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+.confirmed-banner--accepted {
+  background: #e8f5e9;
+  border: 1.5px solid #a5d6a7;
+  color: #1b5e20;
+}
+.confirmed-banner--rejected {
+  background: #fdecea;
+  border: 1.5px solid #e57373;
+  color: #8b2e0f;
+}
+.confirmed-banner-icon {
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.confirmed-banner-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+.confirmed-banner-sub {
+  font-size: 12px;
+  opacity: 0.75;
+  line-height: 1.4;
+}
+
+/* ─── Variantes del brand-icon en header ────────────────── */
+.brand-icon--success {
+  background: #2e7d32;
+}
+.brand-icon--rejected {
+  background: #8b2e0f;
+}
+
+/* ─── Fila de precio con descuento ─────────────────────── */
+.accept-row.discount-row span { color: #8b2e0f; }
+.accept-row.total-row {
+  font-weight: 700;
+  font-size: 15px;
+  border-bottom: none;
+  border-top: 2px solid #1a3a5c;
+  margin-top: 4px;
+  padding-top: 10px;
+  color: #1a3a5c;
+}
+
+/* ─── Footer de empresa ─────────────────────────────────── */
+.accept-footer-company {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 12px;
+  color: #6a655e;
+  padding: 16px 0 0;
+  border-top: 1px solid #e8e3dc;
+}
+.accept-footer-company p { margin: 0; }
