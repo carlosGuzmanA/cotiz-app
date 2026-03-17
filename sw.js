@@ -8,7 +8,7 @@
      · Fallback offline → index.html en navegaciones
    ========================================================= */
 
-const CACHE_VERSION = 'v1.0.7';
+const CACHE_VERSION = 'v1.0.8';
 const CACHE_NAME = `cotizaclima-${CACHE_VERSION}`;
 
 // Activos locales a precargar al instalar el SW
@@ -19,17 +19,17 @@ const PRECACHE_URLS = [
   './clients.html',
   './catalog.html',
   './aceptar.html',
-  './aceptar.js',
-  './aceptar.css',
-  './app.js',
-  './quote-persistence.js',
-  './firebase-auth.js',
-  './quotes-repo.js',
-  './client-repo.js',
-  './ranking-repo.js',
-  './catalog-repo.js',
-  './styles.css',
-  './quotes.css',
+  './assets/js/aceptar.js',
+  './assets/css/aceptar.css',
+  './assets/js/app.js',
+  './assets/js/quote-persistence.js',
+  './assets/js/firebase-auth.js',
+  './assets/js/quotes-repo.js',
+  './assets/js/client-repo.js',
+  './assets/js/ranking-repo.js',
+  './assets/js/catalog-repo.js',
+  './assets/css/styles.css',
+  './assets/css/quotes.css',
   './manifest.json',
   './assets/icons/icon.svg',
   './assets/icons/icon-maskable.svg',
