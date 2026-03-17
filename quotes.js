@@ -328,24 +328,63 @@
       }
       renderResponseBadge(response);
 
-      // Si aceptó y el estado actual es 'issued', avanzar automáticamente
-      if (response.type === 'accepted' && (_shareCurrentItem.status || 'issued') === 'issued') {
-        await window.QuotesRepo.updateQuoteStatus(user.uid, idToken, id, 'accepted', {
-          acceptanceResponse: response,
-          acceptedAt: response.respondedAt || Date.now()
-        });
+      const synced = await syncQuoteResponseForItem(user.uid, idToken, _shareCurrentItem, response);
+      _shareCurrentItem = synced;
+
+      if (response.type === 'accepted' && (synced.status || 'issued') === 'accepted') {
         showStatus('¡El cliente aceptó! Estado actualizado a Aceptada.', false);
-        await loadQuotes();
-      } else if (response.type === 'rejected') {
-        // Guardar la respuesta en la cotización para mostrar el badge
-        await window.QuotesRepo.updateQuoteStatus(user.uid, idToken, id, _shareCurrentItem.status || 'issued', {
-          acceptanceResponse: response
-        });
-        await loadQuotes();
       }
+
+      await loadQuotes();
     } catch (e) {
       showStatus(e.message || 'No se pudo verificar respuesta.', true);
     }
+  }
+
+  async function syncQuoteResponseForItem(uid, idToken, item, responseOverride) {
+    const status = item.status || 'draft';
+    if (status === 'draft') return item;
+
+    let response = responseOverride;
+    if (!response) {
+      try {
+        response = await window.QuotesRepo.getQuoteResponse(item.id, idToken);
+      } catch (e) {
+        return item;
+      }
+    }
+
+    if (!response || !response.type) return item;
+
+    const currentResponse = item.acceptanceResponse || null;
+    const sameType = currentResponse && currentResponse.type === response.type;
+    const sameDate = Number((currentResponse && currentResponse.respondedAt) || 0) === Number(response.respondedAt || 0);
+    const sameResponse = Boolean(sameType && sameDate);
+
+    let nextStatus = status;
+    const extraFields = { acceptanceResponse: response };
+
+    // Solo avanzamos automáticamente a "accepted" si estaba "issued".
+    if (response.type === 'accepted' && status === 'issued') {
+      nextStatus = 'accepted';
+      extraFields.acceptedAt = response.respondedAt || Date.now();
+    }
+
+    const needsPersist = !sameResponse || nextStatus !== status;
+    if (needsPersist) {
+      try {
+        const merged = await window.QuotesRepo.updateQuoteStatus(uid, idToken, item.id, nextStatus, extraFields);
+        return { id: item.id, ...merged };
+      } catch (e) {
+        // Si falla persistencia, al menos reflejar en UI.
+      }
+    }
+
+    return {
+      ...item,
+      status: nextStatus,
+      acceptanceResponse: response
+    };
   }
 
   function closeShareModal() {
@@ -470,12 +509,15 @@
   async function loadQuotes() {
     const { user, idToken } = await requireAuthContext();
     const list = await window.QuotesRepo.listQuotes(user.uid, idToken);
+    const syncedList = await Promise.all(
+      list.map(item => syncQuoteResponseForItem(user.uid, idToken, item))
+    );
     const container = $('quoteList');
-    if (!list.length) {
+    if (!syncedList.length) {
       container.innerHTML = '<div class="quote-item">No hay cotizaciones guardadas.</div>';
       return;
     }
-    container.innerHTML = list.map(quoteItemTemplate).join('');
+    container.innerHTML = syncedList.map(quoteItemTemplate).join('');
   }
 
   async function openQuote(id) {
