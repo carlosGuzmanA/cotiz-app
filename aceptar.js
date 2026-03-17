@@ -225,6 +225,41 @@
     showState('stateRejected');
   }
 
+  function showAlreadyAccepted(existing, quote) {
+    var client  = (quote && quote.client)  || {};
+    var pricing = (quote && quote.pricing) || {};
+
+    $('quoteNumber').textContent     = quote.quoteNumber || '';
+    $('clientNameGreet').textContent = client.name || 'Cliente';
+
+    var detailEl = $('quoteDetailBlock');
+    if (detailEl) {
+      detailEl.innerHTML = totalBannerHTML(pricing) + buildDetailHTML(quote);
+    }
+
+    // Inyectar banner "ya aceptaste" justo antes del saludo
+    var greetBox = document.querySelector('#stateQuote .greeting-box');
+    if (greetBox) {
+      var bannerSub = existing.respondedAt ? 'El ' + fmtDate(existing.respondedAt) : '';
+      greetBox.insertAdjacentHTML('beforebegin',
+        '<div class="confirmed-banner confirmed-banner--accepted">'
+        + '<div class="confirmed-banner-icon"><i class="fas fa-circle-check"></i></div>'
+        + '<div><div class="confirmed-banner-title">¡Ya aceptaste esta cotización!</div>'
+        + (bannerSub ? '<div class="confirmed-banner-sub">' + bannerSub + '</div>' : '')
+        + '</div></div>'
+      );
+    }
+
+    // Ocultar botón aceptar e indicación de firma (ya está confirmada)
+    var btnAccept = $('btnAccept');
+    var hint = document.querySelector('#stateQuote .accept-footer-hint');
+    if (btnAccept) btnAccept.style.display = 'none';
+    if (hint) hint.style.display = 'none';
+
+    showState('stateQuote');
+    $('btnReject').addEventListener('click', handleReject);
+  }
+
   function showAlreadyResponded(existing, quote) {
     var qNum   = (quote && quote.quoteNumber) || _quoteId;
     var client = (quote && quote.client) || {};
@@ -302,7 +337,11 @@
 
       // Si ya respondió → mostrar detalle con banner de respuesta
       if (existingResult && existingResult.type) {
-        showAlreadyResponded(existingResult, quoteResult);
+        if (existingResult.type === 'accepted') {
+          showAlreadyAccepted(existingResult, quoteResult);
+        } else {
+          showAlreadyResponded(existingResult, quoteResult);
+        }
         return;
       }
 
