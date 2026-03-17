@@ -3,12 +3,12 @@
 // ============================================================
 
 let SERVICES = [
-  { id:'instalacion', name:'Instalación nueva', desc:'Primera instalación del equipo', price:100000, icon:'fa-hammer' },
-  { id:'mantencion', name:'Mantención', desc:'Limpieza y revisión general', price:30000, icon:'fa-screwdriver-wrench' },
-  { id:'cambio', name:'Cambio + instalación', desc:'Retiro equipo antiguo + nuevo', price:120000, icon:'fa-arrow-right-arrow-left' },
-  { id:'reparacion', name:'Reparación', desc:'Diagnóstico y reparación de fallas', price:10000, icon:'fa-gear' },
-  { id:'garantia', name:'Visita garantía', desc:'Revisión por garantía vigente', price:0, icon:'fa-shield' },
-  { id:'presupuesto', name:'Solo presupuesto', desc:'Cotización sin instalación', price:0, icon:'fa-clipboard-list' },
+  { id:'instalacion', name:'Instalación nueva', desc:'Primera instalación del equipo', price:100000, icon:'fa-hammer', uiPriceEditable:true },
+  { id:'mantencion', name:'Mantención', desc:'Limpieza y revisión general', price:30000, icon:'fa-screwdriver-wrench', uiPriceEditable:true },
+  { id:'cambio', name:'Cambio + instalación', desc:'Retiro equipo antiguo + nuevo', price:120000, icon:'fa-arrow-right-arrow-left', uiPriceEditable:false },
+  { id:'reparacion', name:'Reparación', desc:'Diagnóstico y reparación de fallas', price:10000, icon:'fa-gear', uiPriceEditable:true },
+  { id:'garantia', name:'Visita garantía', desc:'Revisión por garantía vigente', price:0, icon:'fa-shield', uiPriceEditable:false },
+  { id:'presupuesto', name:'Solo presupuesto', desc:'Cotización sin instalación', price:0, icon:'fa-clipboard-list', uiPriceEditable:false },
 ];
 
 const SERVICE_PDF_CONTENT = {
@@ -98,6 +98,7 @@ let repairUnitValue = 10000;
 let instalacionUnitValue = 100000;
 let mantencionUnitValue = 30000;
 let serviceQtyMap = { instalacion: 0, mantencion: 0 };
+let serviceUiPriceOverrides = {};
 let activeQuoteId = null;
 let activeQuoteStatus = 'draft';
 let acRankings = {};
@@ -125,6 +126,19 @@ function getSelectedEquipmentItems() {
 
 function getEquipmentTotalPrice() {
   return getSelectedEquipmentItems().reduce((sum, item) => sum + (item.cap.price_with_tax * item.qty), 0);
+}
+
+function isServiceUiPriceEditable(svc) {
+  if (!svc) return false;
+  return svc.uiPriceEditable === true || svc.editPriceInUi === true;
+}
+
+function getSingleServiceUnitPrice(svc) {
+  if (!svc) return 0;
+  if (Object.prototype.hasOwnProperty.call(serviceUiPriceOverrides, svc.id)) {
+    return Math.max(0, Number(serviceUiPriceOverrides[svc.id]) || 0);
+  }
+  return Math.max(0, Number(svc.price) || 0);
 }
 
 function updateStep1NextButton() {
@@ -324,7 +338,12 @@ async function loadServicesFromFirebase(url, authToken = '') {
     const data = normalizeFirebaseArrays(raw);
     if (!Array.isArray(data) || data.length === 0) return;
 
-    SERVICES = data;
+    SERVICES = data.map(function(svc) {
+      return {
+        ...svc,
+        uiPriceEditable: svc.uiPriceEditable === true || svc.editPriceInUi === true
+      };
+    });
 
     // Sincronizar variables unitarias con los precios de Firebase
     const inst = data.find(s => s.id === 'instalacion');
@@ -761,13 +780,14 @@ function renderServiceGrid() {
     const qty = Math.max(0, serviceQtyMap[s.id] || 0);
     const isActive = isMultiService(s.id) ? qty > 0 : selectedService === s.id;
     const atInstCap = s.id === 'instalacion' && equipCount > 0 && qty >= equipCount;
+    const canEditUiPrice = isServiceUiPriceEditable(s);
 
     let displayPrice;
     if (s.id === 'reparacion') displayPrice = repairQty * repairUnitValue;
     else if (s.id === 'instalacion') displayPrice = qty * instalacionUnitValue;
     else if (s.id === 'mantencion') displayPrice = qty * mantencionUnitValue;
     else if (isMultiService(s.id)) displayPrice = qty * s.price;
-    else displayPrice = s.price;
+    else displayPrice = getSingleServiceUnitPrice(s);
 
     const priceHtml = displayPrice > 0
       ? `$${fmtNum(displayPrice)}`
@@ -778,7 +798,7 @@ function renderServiceGrid() {
     let inlineControls = '';
     if (isMultiService(s.id) && isActive) {
       const plusDisabled = atInstCap ? 'disabled' : '';
-      const unitHtml = s.id === 'instalacion' ? `
+      const unitHtml = !canEditUiPrice ? '' : (s.id === 'instalacion' ? `
         <div class="svc-unit-row">
           <div class="svc-unit-label">Valor por instalación</div>
           <input type="number" class="svc-unit-input" value="${instalacionUnitValue}"
@@ -788,7 +808,7 @@ function renderServiceGrid() {
           <div class="svc-unit-label">Valor por mantención</div>
           <input type="number" class="svc-unit-input" value="${mantencionUnitValue}"
             min="0" step="1000" oninput="updateMantencionValueInline(this.value)">
-        </div>` : '';
+        </div>` : '');
       inlineControls = `
         <div class="svc-inline-controls">
           <div class="svc-counter">
@@ -798,6 +818,12 @@ function renderServiceGrid() {
           </div>${unitHtml}
         </div>`;
     } else if (s.id === 'reparacion' && isActive) {
+      const unitField = canEditUiPrice ? `
+            <div class="svc-repair-field">
+              <div class="svc-unit-label">Valor unitario</div>
+              <input type="number" id="repairUnitValue" class="svc-unit-input" value="${repairUnitValue}"
+                min="0" step="1000" oninput="updateRepairServiceValue()">
+            </div>` : '';
       inlineControls = `
         <div class="svc-inline-controls">
           <div class="svc-repair-row">
@@ -806,11 +832,16 @@ function renderServiceGrid() {
               <input type="number" id="repairQty" class="svc-unit-input" value="${repairQty}"
                 min="1" step="1" oninput="updateRepairServiceValue()">
             </div>
-            <div class="svc-repair-field">
-              <div class="svc-unit-label">Valor unitario</div>
-              <input type="number" id="repairUnitValue" class="svc-unit-input" value="${repairUnitValue}"
-                min="0" step="1000" oninput="updateRepairServiceValue()">
-            </div>
+            ${unitField}
+          </div>
+        </div>`;
+    } else if (!isMultiService(s.id) && s.id !== 'reparacion' && isActive && canEditUiPrice) {
+      inlineControls = `
+        <div class="svc-inline-controls">
+          <div class="svc-unit-row">
+            <div class="svc-unit-label">Valor en esta cotización</div>
+            <input type="number" class="svc-unit-input" value="${getSingleServiceUnitPrice(s)}"
+              min="0" step="1000" oninput="updateSingleServiceUiPrice('${s.id}', this.value)">
           </div>
         </div>`;
     }
@@ -856,10 +887,26 @@ function selectService(id) {
   }
 
   selectedService = selectedService === id ? null : id;
+  if (selectedService) {
+    const svc = SERVICES.find(s => s.id === selectedService);
+    if (svc && svc.id === 'reparacion') {
+      repairUnitValue = Math.max(0, Number(svc.price) || repairUnitValue || 0);
+    }
+  }
   toggleRepairInputs();
   renderServiceGrid();
   updateStep2NextButton();
   buildSummary();
+}
+
+function updateSingleServiceUiPrice(id, val) {
+  const svc = SERVICES.find(function(s) { return s.id === id; });
+  if (!svc || !isServiceUiPriceEditable(svc)) return;
+  serviceUiPriceOverrides[id] = Math.max(0, parseFloat(val) || 0);
+  const priceEl = document.getElementById('svc-price-' + id);
+  if (priceEl) priceEl.textContent = `$${fmtNum(serviceUiPriceOverrides[id])}`;
+  buildSummary();
+  recalcTotal();
 }
 
 function decrementService(id) {
@@ -922,7 +969,9 @@ function updateRepairServiceValue() {
   const qtyEl = document.getElementById('repairQty');
   const unitEl = document.getElementById('repairUnitValue');
   repairQty = Math.max(1, parseInt((qtyEl && qtyEl.value) || '1', 10) || 1);
-  repairUnitValue = Math.max(0, parseFloat((unitEl && unitEl.value) || '0') || 0);
+  if (unitEl) {
+    repairUnitValue = Math.max(0, parseFloat(unitEl.value || '0') || 0);
+  }
   // Update price display directly without re-rendering grid (avoids losing input focus)
   const priceEl = document.getElementById('svc-price-reparacion');
   if (priceEl) priceEl.textContent = `$${fmtNum(repairQty * repairUnitValue)}`;
@@ -937,7 +986,8 @@ function getCurrentServiceValues(svc) {
     const unitPrice = Math.max(0, repairUnitValue || 0);
     return { qty, unitPrice, totalPrice: qty * unitPrice };
   }
-  return { qty: 1, unitPrice: svc.price, totalPrice: svc.price };
+  const unitPrice = getSingleServiceUnitPrice(svc);
+  return { qty: 1, unitPrice, totalPrice: unitPrice };
 }
 
 function getSelectedServiceItems() {

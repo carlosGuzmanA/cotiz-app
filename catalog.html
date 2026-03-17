@@ -327,6 +327,13 @@
         <input type="text" id="svcIcono" placeholder="Ej: hammer" oninput="updateIconPreview()">
         <div class="svc-icon-preview" id="svcIconPreview"><i class="fas fa-hammer"></i> Vista previa</div>
       </div>
+      <div class="form-group-cat full">
+        <label>Permitir edición de precio en cotización</label>
+        <select id="svcUiPriceEditable">
+          <option value="false" selected>No</option>
+          <option value="true">Sí</option>
+        </select>
+      </div>
     </div>
 
     <div class="schedule-actions" style="margin-top:16px;">
@@ -396,12 +403,12 @@
 
   // Valores por defecto para sembrar la primera vez
   var DEFAULT_SERVICES = [
-    { id:'instalacion', name:'Instalación nueva', desc:'Primera instalación del equipo', price:100000, icon:'fa-hammer' },
-    { id:'mantencion', name:'Mantención', desc:'Limpieza y revisión general', price:30000, icon:'fa-screwdriver-wrench' },
-    { id:'cambio', name:'Cambio + instalación', desc:'Retiro equipo antiguo + nuevo', price:120000, icon:'fa-arrow-right-arrow-left' },
-    { id:'reparacion', name:'Reparación', desc:'Diagnóstico y reparación de fallas', price:10000, icon:'fa-gear' },
-    { id:'garantia', name:'Visita garantía', desc:'Revisión por garantía vigente', price:0, icon:'fa-shield' },
-    { id:'presupuesto', name:'Solo presupuesto', desc:'Cotización sin instalación', price:0, icon:'fa-clipboard-list' }
+    { id:'instalacion', name:'Instalación nueva', desc:'Primera instalación del equipo', price:100000, icon:'fa-hammer', uiPriceEditable:true },
+    { id:'mantencion', name:'Mantención', desc:'Limpieza y revisión general', price:30000, icon:'fa-screwdriver-wrench', uiPriceEditable:true },
+    { id:'cambio', name:'Cambio + instalación', desc:'Retiro equipo antiguo + nuevo', price:120000, icon:'fa-arrow-right-arrow-left', uiPriceEditable:false },
+    { id:'reparacion', name:'Reparación', desc:'Diagnóstico y reparación de fallas', price:10000, icon:'fa-gear', uiPriceEditable:true },
+    { id:'garantia', name:'Visita garantía', desc:'Revisión por garantía vigente', price:0, icon:'fa-shield', uiPriceEditable:false },
+    { id:'presupuesto', name:'Solo presupuesto', desc:'Cotización sin instalación', price:0, icon:'fa-clipboard-list', uiPriceEditable:false }
   ];
 
   function $(id) { return document.getElementById(id); }
@@ -484,6 +491,7 @@
       allServices.map(function(svc, idx) {
         var isBuiltin = BUILTIN_SERVICE_IDS.indexOf(svc.id) !== -1;
         var icon = (svc.icon || 'fa-wrench').replace(/^fa-/, '');
+        var canEditPrice = svc.uiPriceEditable === true || svc.editPriceInUi === true;
         var priceHtml = svc.price > 0
           ? '<div class="cat-price">$' + fmtNum(svc.price) + '</div>'
           : '<div class="cat-price" style="color:#9a9488;font-size:11px;">Gratis</div>';
@@ -492,7 +500,9 @@
           '<div class="cat-body">' +
             '<div class="cat-title">' + escHtml(svc.name || '—') + (isBuiltin ? '<span class="warn-badge">integrado</span>' : '') + '</div>' +
             '<div class="cat-sub">' + escHtml(svc.desc || '') + '</div>' +
-            '<div class="cat-tags"><span class="cat-id-code">' + escHtml(svc.id || '') + '</span></div>' +
+            '<div class="cat-tags"><span class="cat-id-code">' + escHtml(svc.id || '') + '</span>' +
+              (canEditPrice ? '<span class="catalog-badge">precio editable UI</span>' : '') +
+            '</div>' +
           '</div>' +
           '<div class="cat-right">' +
             priceHtml +
@@ -642,6 +652,7 @@
     $('svcNombre').value = svc.name || '';
     $('svcDesc').value   = svc.desc || '';
     $('svcPrecio').value = svc.price !== undefined ? svc.price : '';
+    $('svcUiPriceEditable').value = (svc.uiPriceEditable === true || svc.editPriceInUi === true) ? 'true' : 'false';
     var icon = (svc.icon || 'fa-hammer').replace(/^fa-/, '');
     $('svcIcono').value  = icon;
     updateIconPreview();
@@ -679,7 +690,8 @@
       name:  nombre,
       desc:  $('svcDesc').value.trim(),
       price: Number($('svcPrecio').value) || 0,
-      icon:  'fa-' + (iconVal || 'wrench')
+      icon:  'fa-' + (iconVal || 'wrench'),
+      uiPriceEditable: $('svcUiPriceEditable').value === 'true'
     };
 
     if (editingServicioIdx !== null) {
@@ -895,13 +907,24 @@
     try {
       var results = await Promise.all([
         window.CatalogRepo.listEquipment(idToken),
+        window.CatalogRepo.listServices(idToken),
         window.CatalogRepo.listAccessories(idToken)
       ]);
       allEquipment = results[0] || [];
 
-      // Servicios se mantienen locales en esta vista; no se consultan en Firebase.
-      allServices = DEFAULT_SERVICES.slice();
-      allExtras = results[1] || [];
+      allServices = results[1] || [];
+      if (!allServices.length) {
+        allServices = DEFAULT_SERVICES.slice();
+        await window.CatalogRepo.saveServices(idToken, allServices);
+      } else {
+        allServices = allServices.map(function(svc) {
+          return {
+            ...svc,
+            uiPriceEditable: svc.uiPriceEditable === true || svc.editPriceInUi === true
+          };
+        });
+      }
+      allExtras = results[2] || [];
       showStatus('', false);
 
       renderEquipos();
