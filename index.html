@@ -531,7 +531,7 @@
         .catch(function(err) { console.warn('SW registration failed:', err); });
     });
   }
-  // Leer CACHE_VERSION desde sw.js y actualizar el badge
+  // Leer CACHE_VERSION desde sw.js y actualizar el badge prueba
   fetch('./sw.js')
     .then(function(r) { return r.text(); })
     .then(function(text) {
